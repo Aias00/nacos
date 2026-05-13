@@ -40,6 +40,7 @@ import com.alibaba.nacos.config.server.service.repository.HistoryConfigInfoPersi
 import com.alibaba.nacos.config.server.service.sql.EmbeddedStorageContextUtils;
 import com.alibaba.nacos.config.server.utils.ConfigExtInfoUtil;
 import com.alibaba.nacos.config.server.utils.ConfigPersistContext;
+import com.alibaba.nacos.config.server.utils.ConfigStorageTenantUtil;
 import com.alibaba.nacos.config.server.utils.LogUtil;
 import com.alibaba.nacos.config.server.utils.ParamUtils;
 import com.alibaba.nacos.core.distributed.id.IdGeneratorManager;
@@ -331,7 +332,8 @@ public class EmbeddedConfigInfoPersistServiceImpl implements ConfigInfoPersistSe
                 dataSourceService.getDataSourceType(), TableConstant.CONFIG_TAGS_RELATION);
         final String sql = configTagsRelationMapper.insert(
                 Arrays.asList("id", "tag_name", "tag_type", "data_id", "group_id", "tenant_id"));
-        final Object[] args = new Object[] {configId, tagName, StringUtils.EMPTY, dataId, group, tenant};
+        final Object[] args = new Object[] {configId, tagName, StringUtils.EMPTY, dataId, group,
+                ConfigStorageTenantUtil.normalizeTenant(tenant)};
         EmbeddedStorageContextHolder.addSqlContext(sql, args);
     }
     
@@ -978,7 +980,8 @@ public class EmbeddedConfigInfoPersistServiceImpl implements ConfigInfoPersistSe
                 dataSourceService.getDataSourceType(), TableConstant.CONFIG_TAGS_RELATION);
         String sql = configTagsRelationMapper.select(Collections.singletonList("tag_name"),
                 Arrays.asList("data_id", "group_id", "tenant_id"));
-        return databaseOperate.queryMany(sql, new Object[] {dataId, group, tenant}, String.class);
+        String tenantTmp = ConfigStorageTenantUtil.normalizeTenant(tenant);
+        return databaseOperate.queryMany(sql, new Object[] {dataId, group, tenantTmp}, String.class);
     }
     
     @Override
@@ -1004,7 +1007,7 @@ public class EmbeddedConfigInfoPersistServiceImpl implements ConfigInfoPersistSe
     @Override
     public ConfigAdvanceInfo findConfigAdvanceInfo(final String dataId, final String group, final String tenant) {
         final String tenantTmp = StringUtils.isBlank(tenant) ? StringUtils.EMPTY : tenant;
-        List<String> configTagList = this.selectTagByConfig(dataId, group, tenant);
+        List<String> configTagList = this.selectTagByConfig(dataId, group, tenantTmp);
         
         ConfigInfoMapper configInfoMapper = mapperManager.findMapper(dataSourceService.getDataSourceType(),
                 TableConstant.CONFIG_INFO);
@@ -1038,7 +1041,7 @@ public class EmbeddedConfigInfoPersistServiceImpl implements ConfigInfoPersistSe
                         "gmt_modified", "src_user", "src_ip", "c_desc", "c_use", "effect", "type", "c_schema",
                         "encrypted_data_key"), Arrays.asList("data_id", "group_id", "tenant_id"));
         
-        List<String> configTagList = selectTagByConfig(dataId, group, tenant);
+        List<String> configTagList = selectTagByConfig(dataId, group, tenantTmp);
         
         ConfigAllInfo configAdvance = databaseOperate.queryOne(sql, new Object[] {dataId, group, tenantTmp},
                 CONFIG_ALL_INFO_ROW_MAPPER);

@@ -39,7 +39,9 @@ import javax.sql.DataSource;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -56,10 +58,10 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class ExternalDataSourceServiceImplTest {
-    
+
     @InjectMocks
     private ExternalDataSourceServiceImpl service;
-    
+
     @Mock
     private JdbcTemplate jt;
     
@@ -291,5 +293,25 @@ class ExternalDataSourceServiceImplTest {
         when(testMasterJT.update("DELETE FROM config_info WHERE data_id='com.alibaba.nacos.testMasterDB'")).thenThrow(
                 new NJdbcException("test"));
         assertDoesNotThrow(() -> service.new SelectMasterTask().run());
+    }
+
+    @Test
+    void testValidatePostgresqlTenantSchema() {
+        ReflectionTestUtils.setField(service, "dataSourceType", "postgresql");
+        Map<String, Object> validSchema = new HashMap<>();
+        validSchema.put("is_nullable", "NO");
+        validSchema.put("column_default", "''::character varying");
+        when(jt.queryForMap(anyString(), anyString())).thenReturn(validSchema);
+        assertDoesNotThrow(() -> service.validatePostgresqlTenantSchema(jt));
+    }
+
+    @Test
+    void testValidatePostgresqlTenantSchemaWithNullableColumn() {
+        ReflectionTestUtils.setField(service, "dataSourceType", "postgresql");
+        Map<String, Object> invalidSchema = new HashMap<>();
+        invalidSchema.put("is_nullable", "YES");
+        invalidSchema.put("column_default", null);
+        when(jt.queryForMap(anyString(), anyString())).thenReturn(invalidSchema);
+        assertThrows(IllegalStateException.class, () -> service.validatePostgresqlTenantSchema(jt));
     }
 }

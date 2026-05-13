@@ -24,6 +24,7 @@ import com.alibaba.nacos.config.server.model.ConfigInfoBetaWrapper;
 import com.alibaba.nacos.config.server.model.ConfigInfoStateWrapper;
 import com.alibaba.nacos.config.server.model.ConfigOperateResult;
 import com.alibaba.nacos.config.server.service.repository.ConfigInfoBetaPersistService;
+import com.alibaba.nacos.config.server.utils.ConfigStorageTenantUtil;
 import com.alibaba.nacos.config.server.utils.LogUtil;
 import com.alibaba.nacos.persistence.configuration.condition.ConditionOnExternalStorage;
 import com.alibaba.nacos.persistence.datasource.DataSourceService;
@@ -87,7 +88,7 @@ public class ExternalConfigInfoBetaPersistServiceImpl implements ConfigInfoBetaP
     @Override
     public ConfigOperateResult addConfigInfo4Beta(ConfigInfo configInfo, String betaIps, String srcIp, String srcUser) {
         String appNameTmp = StringUtils.defaultEmptyIfBlank(configInfo.getAppName());
-        String tenantTmp = StringUtils.defaultEmptyIfBlank(configInfo.getTenant());
+        String tenantTmp = ConfigStorageTenantUtil.normalizeTenant(configInfo.getTenant());
         String md5 = MD5Utils.md5Hex(configInfo.getContent(), Constants.PERSIST_ENCODE);
         String encryptedDataKey = StringUtils.defaultEmptyIfBlank(configInfo.getEncryptedDataKey());
         try {
@@ -135,7 +136,7 @@ public class ExternalConfigInfoBetaPersistServiceImpl implements ConfigInfoBetaP
     
     @Override
     public void removeConfigInfo4Beta(final String dataId, final String group, final String tenant) {
-        final String tenantTmp = StringUtils.isBlank(tenant) ? StringUtils.EMPTY : tenant;
+        final String tenantTmp = ConfigStorageTenantUtil.normalizeTenant(tenant);
         tjt.execute(status -> {
             try {
                 ConfigInfoStateWrapper configInfo = findConfigInfo4BetaState(dataId, group, tenant);
@@ -157,7 +158,7 @@ public class ExternalConfigInfoBetaPersistServiceImpl implements ConfigInfoBetaP
     public ConfigOperateResult updateConfigInfo4Beta(ConfigInfo configInfo, String betaIps, String srcIp,
             String srcUser) {
         String appNameTmp = StringUtils.defaultEmptyIfBlank(configInfo.getAppName());
-        String tenantTmp = StringUtils.defaultEmptyIfBlank(configInfo.getTenant());
+        String tenantTmp = ConfigStorageTenantUtil.normalizeTenant(configInfo.getTenant());
         String md5 = MD5Utils.md5Hex(configInfo.getContent(), Constants.ENCODE);
         String encryptedDataKey = StringUtils.defaultEmptyIfBlank(configInfo.getEncryptedDataKey());
         try {
@@ -180,7 +181,7 @@ public class ExternalConfigInfoBetaPersistServiceImpl implements ConfigInfoBetaP
     @Override
     public ConfigInfoStateWrapper findConfigInfo4BetaState(final String dataId, final String group,
             final String tenant) {
-        String tenantTmp = StringUtils.isBlank(tenant) ? StringUtils.EMPTY : tenant;
+        String tenantTmp = ConfigStorageTenantUtil.normalizeTenant(tenant);
         try {
             return this.jt.queryForObject(
                     "SELECT id,data_id,group_id,tenant_id,gmt_modified FROM config_info_beta WHERE data_id=? AND group_id=? AND tenant_id=? ",
@@ -206,7 +207,7 @@ public class ExternalConfigInfoBetaPersistServiceImpl implements ConfigInfoBetaP
     public ConfigOperateResult updateConfigInfo4BetaCas(ConfigInfo configInfo, String betaIps, String srcIp,
             String srcUser) {
         String appNameTmp = StringUtils.defaultEmptyIfBlank(configInfo.getAppName());
-        String tenantTmp = StringUtils.defaultEmptyIfBlank(configInfo.getTenant());
+        String tenantTmp = ConfigStorageTenantUtil.normalizeTenant(configInfo.getTenant());
         String md5 = MD5Utils.md5Hex(configInfo.getContent(), Constants.ENCODE);
         try {
             ConfigInfoBetaMapper configInfoBetaMapper = mapperManager.findMapper(dataSourceService.getDataSourceType(),
@@ -243,7 +244,7 @@ public class ExternalConfigInfoBetaPersistServiceImpl implements ConfigInfoBetaP
     
     @Override
     public ConfigInfoBetaWrapper findConfigInfo4Beta(final String dataId, final String group, final String tenant) {
-        String tenantTmp = StringUtils.isBlank(tenant) ? StringUtils.EMPTY : tenant;
+        String tenantTmp = ConfigStorageTenantUtil.normalizeTenant(tenant);
         try {
             ConfigInfoBetaMapper configInfoBetaMapper = mapperManager.findMapper(dataSourceService.getDataSourceType(),
                     TableConstant.CONFIG_INFO_BETA);

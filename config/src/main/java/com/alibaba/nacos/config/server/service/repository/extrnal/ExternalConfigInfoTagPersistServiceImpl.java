@@ -24,6 +24,7 @@ import com.alibaba.nacos.config.server.model.ConfigInfoStateWrapper;
 import com.alibaba.nacos.config.server.model.ConfigInfoTagWrapper;
 import com.alibaba.nacos.config.server.model.ConfigOperateResult;
 import com.alibaba.nacos.config.server.service.repository.ConfigInfoTagPersistService;
+import com.alibaba.nacos.config.server.utils.ConfigStorageTenantUtil;
 import com.alibaba.nacos.config.server.utils.LogUtil;
 import com.alibaba.nacos.persistence.configuration.condition.ConditionOnExternalStorage;
 import com.alibaba.nacos.persistence.datasource.DataSourceService;
@@ -91,7 +92,7 @@ public class ExternalConfigInfoTagPersistServiceImpl implements ConfigInfoTagPer
             String tag) {
         ConfigInfoTagMapper configInfoTagMapper = mapperManager.findMapper(dataSourceService.getDataSourceType(),
                 TableConstant.CONFIG_INFO_TAG);
-        String tenantTmp = StringUtils.isBlank(tenant) ? StringUtils.EMPTY : tenant;
+        String tenantTmp = ConfigStorageTenantUtil.normalizeTenant(tenant);
         try {
             return this.jt.queryForObject(
                     configInfoTagMapper.select(Arrays.asList("id", "data_id", "group_id", "tenant_id", "gmt_modified"),
@@ -103,7 +104,7 @@ public class ExternalConfigInfoTagPersistServiceImpl implements ConfigInfoTagPer
     }
     
     private ConfigOperateResult getTagOperateResult(String dataId, String group, String tenant, String tag) {
-        String tenantTmp = StringUtils.isBlank(tenant) ? StringUtils.EMPTY : tenant;
+        String tenantTmp = ConfigStorageTenantUtil.normalizeTenant(tenant);
         
         ConfigInfoStateWrapper configInfo4Tag = this.findConfigInfo4TagState(dataId, group, tenantTmp, tag);
         if (configInfo4Tag == null) {
@@ -116,7 +117,7 @@ public class ExternalConfigInfoTagPersistServiceImpl implements ConfigInfoTagPer
     @Override
     public ConfigOperateResult addConfigInfo4Tag(ConfigInfo configInfo, String tag, String srcIp, String srcUser) {
         String appNameTmp = StringUtils.defaultEmptyIfBlank(configInfo.getAppName());
-        String tenantTmp = StringUtils.defaultEmptyIfBlank(configInfo.getTenant());
+        String tenantTmp = ConfigStorageTenantUtil.normalizeTenant(configInfo.getTenant());
         String tagTmp = StringUtils.isBlank(tag) ? StringUtils.EMPTY : tag.trim();
         String md5 = MD5Utils.md5Hex(configInfo.getContent(), Constants.ENCODE);
         try {
@@ -161,7 +162,7 @@ public class ExternalConfigInfoTagPersistServiceImpl implements ConfigInfoTagPer
     @Override
     public void removeConfigInfoTag(final String dataId, final String group, final String tenant, final String tag,
             final String srcIp, final String srcUser) {
-        String tenantTmp = StringUtils.isBlank(tenant) ? StringUtils.EMPTY : tenant;
+        String tenantTmp = ConfigStorageTenantUtil.normalizeTenant(tenant);
         String tagTmp = StringUtils.isBlank(tag) ? StringUtils.EMPTY : tag;
         try {
             ConfigInfoTagMapper configInfoTagMapper = mapperManager.findMapper(dataSourceService.getDataSourceType(),
@@ -177,7 +178,7 @@ public class ExternalConfigInfoTagPersistServiceImpl implements ConfigInfoTagPer
     @Override
     public ConfigOperateResult updateConfigInfo4Tag(ConfigInfo configInfo, String tag, String srcIp, String srcUser) {
         String appNameTmp = StringUtils.defaultEmptyIfBlank(configInfo.getAppName());
-        String tenantTmp = StringUtils.defaultEmptyIfBlank(configInfo.getTenant());
+        String tenantTmp = ConfigStorageTenantUtil.normalizeTenant(configInfo.getTenant());
         String tagTmp = StringUtils.isBlank(tag) ? StringUtils.EMPTY : tag.trim();
         try {
             String md5 = MD5Utils.md5Hex(configInfo.getContent(), Constants.ENCODE);
@@ -200,7 +201,7 @@ public class ExternalConfigInfoTagPersistServiceImpl implements ConfigInfoTagPer
     public ConfigOperateResult updateConfigInfo4TagCas(ConfigInfo configInfo, String tag, String srcIp,
             String srcUser) {
         String appNameTmp = StringUtils.defaultEmptyIfBlank(configInfo.getAppName());
-        String tenantTmp = StringUtils.defaultEmptyIfBlank(configInfo.getTenant());
+        String tenantTmp = ConfigStorageTenantUtil.normalizeTenant(configInfo.getTenant());
         String tagTmp = StringUtils.isBlank(tag) ? StringUtils.EMPTY : tag.trim();
         try {
             String md5 = MD5Utils.md5Hex(configInfo.getContent(), Constants.ENCODE);
@@ -239,7 +240,7 @@ public class ExternalConfigInfoTagPersistServiceImpl implements ConfigInfoTagPer
     @Override
     public ConfigInfoTagWrapper findConfigInfo4Tag(final String dataId, final String group, final String tenant,
             final String tag) {
-        String tenantTmp = StringUtils.isBlank(tenant) ? StringUtils.EMPTY : tenant;
+        String tenantTmp = ConfigStorageTenantUtil.normalizeTenant(tenant);
         String tagTmp = StringUtils.isBlank(tag) ? StringUtils.EMPTY : tag.trim();
         try {
             ConfigInfoTagMapper configInfoTagMapper = mapperManager.findMapper(dataSourceService.getDataSourceType(),
@@ -291,7 +292,7 @@ public class ExternalConfigInfoTagPersistServiceImpl implements ConfigInfoTagPer
     
     @Override
     public List<String> findConfigInfoTags(final String dataId, final String group, final String tenant) {
-        String tenantTmp = StringUtils.isBlank(tenant) ? StringUtils.EMPTY : tenant;
+        String tenantTmp = ConfigStorageTenantUtil.normalizeTenant(tenant);
         ConfigInfoTagMapper configInfoTagMapper = mapperManager.findMapper(dataSourceService.getDataSourceType(),
                 TableConstant.CONFIG_INFO_TAG);
         String selectSql = configInfoTagMapper.select(Collections.singletonList("tag_id"),

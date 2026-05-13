@@ -23,6 +23,7 @@ import com.alibaba.nacos.config.server.model.ConfigHistoryInfo;
 import com.alibaba.nacos.config.server.model.ConfigInfo;
 import com.alibaba.nacos.config.server.model.ConfigInfoStateWrapper;
 import com.alibaba.nacos.config.server.service.repository.HistoryConfigInfoPersistService;
+import com.alibaba.nacos.config.server.utils.ConfigStorageTenantUtil;
 import com.alibaba.nacos.config.server.utils.LogUtil;
 import com.alibaba.nacos.persistence.configuration.condition.ConditionOnExternalStorage;
 import com.alibaba.nacos.persistence.datasource.DataSourceService;
@@ -90,7 +91,7 @@ public class ExternalHistoryConfigInfoPersistServiceImpl implements HistoryConfi
     public void insertConfigHistoryAtomic(long id, ConfigInfo configInfo, String srcIp, String srcUser,
             final Timestamp time, String ops, String publishType, String grayName, String extInfo) {
         String appNameTmp = StringUtils.defaultEmptyIfBlank(configInfo.getAppName());
-        String tenantTmp = StringUtils.defaultEmptyIfBlank(configInfo.getTenant());
+        String tenantTmp = ConfigStorageTenantUtil.normalizeTenant(configInfo.getTenant());
         final String md5Tmp = MD5Utils.md5Hex(configInfo.getContent(), Constants.ENCODE);
         String encryptedDataKey = StringUtils.defaultEmptyIfBlank(configInfo.getEncryptedDataKey());
         String publishTypeTmp = StringUtils.defaultEmptyIfBlank(publishType);
@@ -162,7 +163,7 @@ public class ExternalHistoryConfigInfoPersistServiceImpl implements HistoryConfi
     public Page<ConfigHistoryInfo> findConfigHistory(String dataId, String group, String tenant, int pageNo,
             int pageSize) {
         PaginationHelper<ConfigHistoryInfo> helper = createPaginationHelper();
-        String tenantTmp = StringUtils.isBlank(tenant) ? StringUtils.EMPTY : tenant;
+        String tenantTmp = ConfigStorageTenantUtil.normalizeTenant(tenant);
         
         MapperContext context = new MapperContext((pageNo - 1) * pageSize, pageSize);
         context.putWhereParameter(FieldConstant.DATA_ID, dataId);
