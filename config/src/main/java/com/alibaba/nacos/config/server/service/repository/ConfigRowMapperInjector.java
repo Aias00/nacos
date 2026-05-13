@@ -30,6 +30,7 @@ import com.alibaba.nacos.config.server.model.ConfigInfoStateWrapper;
 import com.alibaba.nacos.config.server.model.ConfigInfoTagWrapper;
 import com.alibaba.nacos.config.server.model.ConfigInfoWrapper;
 import com.alibaba.nacos.config.server.model.ConfigKey;
+import com.alibaba.nacos.config.server.utils.ConfigStorageTenantUtil;
 import com.alibaba.nacos.common.utils.StringUtils;
 import com.alibaba.nacos.persistence.repository.RowMapperManager;
 import org.springframework.jdbc.core.RowMapper;
@@ -45,7 +46,7 @@ import java.sql.SQLException;
  */
 @Component
 public class ConfigRowMapperInjector {
-    
+
     public static final RowMapper<ConfigInfoWrapper> CONFIG_INFO_WRAPPER_ROW_MAPPER = new ConfigInfoWrapperRowMapper();
     
     public static final ConfigInfoStateWrapperRowMapper CONFIG_INFO_STATE_WRAPPER_ROW_MAPPER = new ConfigInfoStateWrapperRowMapper();
@@ -82,7 +83,11 @@ public class ConfigRowMapperInjector {
     
     public ConfigRowMapperInjector() {
     }
-    
+
+    private static String normalizeTenant(String tenant) {
+        return ConfigStorageTenantUtil.normalizeTenant(tenant);
+    }
+
     private static void injectConfigRowMapper() {
         // CONFIG_INFO_WRAPPER_ROW_MAPPER
         
@@ -180,7 +185,7 @@ public class ConfigRowMapperInjector {
             
             info.setDataId(rs.getString("data_id"));
             info.setGroup(rs.getString("group_id"));
-            info.setTenant(rs.getString("tenant_id"));
+            info.setTenant(normalizeTenant(rs.getString("tenant_id")));
             info.setAppName(rs.getString("app_name"));
             
             try {
@@ -221,7 +226,7 @@ public class ConfigRowMapperInjector {
             
             info.setDataId(rs.getString("data_id"));
             info.setGroup(rs.getString("group_id"));
-            info.setTenant(rs.getString("tenant_id"));
+            info.setTenant(normalizeTenant(rs.getString("tenant_id")));
             info.setLastModified(rs.getTimestamp("gmt_modified").getTime());
             try {
                 info.setMd5(rs.getString("md5"));
@@ -246,7 +251,7 @@ public class ConfigRowMapperInjector {
             
             info.setDataId(rs.getString("data_id"));
             info.setGroup(rs.getString("group_id"));
-            info.setTenant(rs.getString("tenant_id"));
+            info.setTenant(normalizeTenant(rs.getString("tenant_id")));
             info.setAppName(rs.getString("app_name"));
             info.setBetaIps(rs.getString("beta_ips"));
             
@@ -282,7 +287,7 @@ public class ConfigRowMapperInjector {
             
             info.setDataId(rs.getString("data_id"));
             info.setGroup(rs.getString("group_id"));
-            info.setTenant(rs.getString("tenant_id"));
+            info.setTenant(normalizeTenant(rs.getString("tenant_id")));
             info.setTag(rs.getString("tag_id"));
             info.setAppName(rs.getString("app_name"));
             
@@ -314,7 +319,7 @@ public class ConfigRowMapperInjector {
             
             info.setDataId(rs.getString("data_id"));
             info.setGroup(rs.getString("group_id"));
-            info.setTenant(rs.getString("tenant_id"));
+            info.setTenant(normalizeTenant(rs.getString("tenant_id")));
             info.setGrayName(rs.getString("gray_name"));
             try {
                 info.setGrayRule(rs.getString("gray_rule"));
@@ -361,7 +366,7 @@ public class ConfigRowMapperInjector {
             
             info.setDataId(rs.getString("data_id"));
             info.setGroup(rs.getString("group_id"));
-            info.setTenant(rs.getString("tenant_id"));
+            info.setTenant(normalizeTenant(rs.getString("tenant_id")));
             
             try {
                 info.setAppName(rs.getString("app_name"));
@@ -453,7 +458,7 @@ public class ConfigRowMapperInjector {
             ConfigAllInfo info = new ConfigAllInfo();
             info.setDataId(rs.getString("data_id"));
             info.setGroup(rs.getString("group_id"));
-            info.setTenant(rs.getString("tenant_id"));
+            info.setTenant(normalizeTenant(rs.getString("tenant_id")));
             info.setAppName(rs.getString("app_name"));
             try {
                 info.setContent(rs.getString("content"));
@@ -493,7 +498,7 @@ public class ConfigRowMapperInjector {
             
             info.setDataId(rs.getString("data_id"));
             info.setGroup(rs.getString("group_id"));
-            info.setTenant(rs.getString("tenant_id"));
+            info.setTenant(normalizeTenant(rs.getString("tenant_id")));
             info.setAppName(rs.getString("app_name"));
             info.setBetaIps(rs.getString("beta_ips"));
             
@@ -521,7 +526,7 @@ public class ConfigRowMapperInjector {
             
             info.setDataId(rs.getString("data_id"));
             info.setGroup(rs.getString("group_id"));
-            info.setTenant(rs.getString("tenant_id"));
+            info.setTenant(normalizeTenant(rs.getString("tenant_id")));
             info.setTag(rs.getString("tag_id"));
             info.setAppName(rs.getString("app_name"));
             
@@ -569,7 +574,7 @@ public class ConfigRowMapperInjector {
             ConfigInfoChanged info = new ConfigInfoChanged();
             info.setDataId(rs.getString("data_id"));
             info.setGroup(rs.getString("group_id"));
-            info.setTenant(rs.getString("tenant_id"));
+            info.setTenant(normalizeTenant(rs.getString("tenant_id")));
             return info;
         }
     }
@@ -582,7 +587,7 @@ public class ConfigRowMapperInjector {
             configHistoryInfo.setId(rs.getLong("nid"));
             configHistoryInfo.setDataId(rs.getString("data_id"));
             configHistoryInfo.setGroup(rs.getString("group_id"));
-            configHistoryInfo.setTenant(rs.getString("tenant_id"));
+            configHistoryInfo.setTenant(normalizeTenant(rs.getString("tenant_id")));
             configHistoryInfo.setAppName(rs.getString("app_name"));
             configHistoryInfo.setSrcIp(rs.getString("src_ip"));
             configHistoryInfo.setSrcUser(rs.getString("src_user"));
@@ -604,7 +609,7 @@ public class ConfigRowMapperInjector {
             configHistoryInfo.setId(rs.getLong("nid"));
             configHistoryInfo.setDataId(rs.getString("data_id"));
             configHistoryInfo.setGroup(rs.getString("group_id"));
-            configHistoryInfo.setTenant(rs.getString("tenant_id"));
+            configHistoryInfo.setTenant(normalizeTenant(rs.getString("tenant_id")));
             configHistoryInfo.setAppName(rs.getString("app_name"));
             configHistoryInfo.setMd5(rs.getString("md5"));
             configHistoryInfo.setContent(rs.getString("content"));

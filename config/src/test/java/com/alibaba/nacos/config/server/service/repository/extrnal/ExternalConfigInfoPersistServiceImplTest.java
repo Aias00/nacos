@@ -86,7 +86,7 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(SpringExtension.class)
 class ExternalConfigInfoPersistServiceImplTest {
-    
+
     MockedStatic<EnvUtil> envUtilMockedStatic;
     
     MockedStatic<ExternalStorageUtils> externalStorageUtilsMockedStatic;
@@ -997,6 +997,17 @@ class ExternalConfigInfoPersistServiceImplTest {
         }
     }
     
+    @Test
+    void testSelectTagByConfigWithNullTenantNormalized() {
+        String dataId = "dataId4567222";
+        String group = "group3456789";
+        List<String> tagStrings = Arrays.asList("", "", "");
+        when(jdbcTemplate.queryForList(anyString(), eq(new Object[] {dataId, group, ""}),
+                eq(String.class))).thenReturn(tagStrings);
+        List<String> configTags = externalConfigInfoPersistService.selectTagByConfig(dataId, group, null);
+        assertEquals(tagStrings, configTags);
+    }
+
     @Test
     void testFindConfigInfosByIds() {
         

@@ -51,7 +51,7 @@ import static org.mockito.ArgumentMatchers.eq;
 
 @ExtendWith(SpringExtension.class)
 class ConfigRowMapperInjectorTest {
-    
+
     @Test
     void testInit() {
         ConfigRowMapperInjector configRowMapperInjector = new ConfigRowMapperInjector();
@@ -240,6 +240,23 @@ class ConfigRowMapperInjectorTest {
         assertEquals(preConfig, configInfoWrapper);
     }
     
+    @Test
+    void testConfigInfoRowMapperNormalizeNullTenant() throws SQLException {
+        ResultSetImpl resultSet = Mockito.mock(ResultSetImpl.class);
+        Mockito.when(resultSet.getString(eq("data_id"))).thenReturn("testDataId");
+        Mockito.when(resultSet.getString(eq("group_id"))).thenReturn("group_id11");
+        Mockito.when(resultSet.getString(eq("tenant_id"))).thenReturn(null);
+        Mockito.when(resultSet.getString(eq("app_name"))).thenReturn("app_name11111");
+        Mockito.when(resultSet.getString(eq("type"))).thenReturn("type55555");
+        Mockito.when(resultSet.getString(eq("content"))).thenReturn("content1123434t");
+        Mockito.when(resultSet.getLong(eq("id"))).thenReturn(1243567898L);
+        Mockito.when(resultSet.getString(eq("md5"))).thenReturn("md54567");
+        Mockito.when(resultSet.getString(eq("encrypted_data_key"))).thenReturn("encrypted_data_key1324");
+        ConfigRowMapperInjector.ConfigInfoRowMapper configInfoWrapperRowMapper = new ConfigRowMapperInjector.ConfigInfoRowMapper();
+        ConfigInfo configInfoWrapper = configInfoWrapperRowMapper.mapRow(resultSet, 10);
+        assertEquals("", configInfoWrapper.getTenant());
+    }
+
     @Test
     void testConfigInfoWrapperRowMapper() throws SQLException {
         

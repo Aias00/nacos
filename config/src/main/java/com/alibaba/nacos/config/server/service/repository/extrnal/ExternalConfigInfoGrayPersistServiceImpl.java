@@ -26,6 +26,7 @@ import com.alibaba.nacos.config.server.model.ConfigOperateResult;
 import com.alibaba.nacos.config.server.service.repository.ConfigInfoGrayPersistService;
 import com.alibaba.nacos.config.server.service.repository.HistoryConfigInfoPersistService;
 import com.alibaba.nacos.config.server.utils.ConfigExtInfoUtil;
+import com.alibaba.nacos.config.server.utils.ConfigStorageTenantUtil;
 import com.alibaba.nacos.config.server.utils.LogUtil;
 import com.alibaba.nacos.persistence.configuration.condition.ConditionOnExternalStorage;
 import com.alibaba.nacos.persistence.datasource.DataSourceService;
@@ -102,7 +103,7 @@ public class ExternalConfigInfoGrayPersistServiceImpl implements ConfigInfoGrayP
             String grayName) {
         ConfigInfoGrayMapper configInfoGrayMapper = mapperManager.findMapper(dataSourceService.getDataSourceType(),
                 TableConstant.CONFIG_INFO_GRAY);
-        String tenantTmp = StringUtils.isBlank(tenant) ? StringUtils.EMPTY : tenant;
+        String tenantTmp = ConfigStorageTenantUtil.normalizeTenant(tenant);
         String grayNameTmp = StringUtils.isBlank(grayName) ? StringUtils.EMPTY : grayName.trim();
         try {
             return this.jt.queryForObject(configInfoGrayMapper.select(
@@ -115,7 +116,7 @@ public class ExternalConfigInfoGrayPersistServiceImpl implements ConfigInfoGrayP
     }
     
     private ConfigOperateResult getGrayOperateResult(String dataId, String group, String tenant, String grayName) {
-        String tenantTmp = StringUtils.isBlank(tenant) ? StringUtils.EMPTY : tenant;
+        String tenantTmp = ConfigStorageTenantUtil.normalizeTenant(tenant);
         
         ConfigInfoStateWrapper configInfo4Gray = this.findConfigInfo4GrayState(dataId, group, tenantTmp, grayName);
         if (configInfo4Gray == null) {
@@ -129,8 +130,7 @@ public class ExternalConfigInfoGrayPersistServiceImpl implements ConfigInfoGrayP
     public ConfigOperateResult addConfigInfo4Gray(ConfigInfo configInfo, String grayName, String grayRule, String srcIp,
             String srcUser) {
         return tjt.execute(status -> {
-            String tenantTmp =
-                    StringUtils.isBlank(configInfo.getTenant()) ? StringUtils.EMPTY : configInfo.getTenant().trim();
+            String tenantTmp = ConfigStorageTenantUtil.normalizeTenant(configInfo.getTenant());
             String grayNameTmp = StringUtils.isBlank(grayName) ? StringUtils.EMPTY : grayName.trim();
             String grayRuleTmp = StringUtils.isBlank(grayRule) ? StringUtils.EMPTY : grayRule.trim();
             try {
@@ -154,7 +154,7 @@ public class ExternalConfigInfoGrayPersistServiceImpl implements ConfigInfoGrayP
     public void addConfigInfoGrayAtomic(long configGrayId, ConfigInfo configInfo, String grayName, String grayRule,
             String srcIp, String srcUser) {
         String appNameTmp = StringUtils.defaultEmptyIfBlank(configInfo.getAppName());
-        String tenantTmp = StringUtils.defaultEmptyIfBlank(configInfo.getTenant());
+        String tenantTmp = ConfigStorageTenantUtil.normalizeTenant(configInfo.getTenant());
         String md5 = MD5Utils.md5Hex(configInfo.getContent(), Constants.ENCODE);
         final String encryptedDataKey =
                 configInfo.getEncryptedDataKey() == null ? StringUtils.EMPTY : configInfo.getEncryptedDataKey();
@@ -195,7 +195,7 @@ public class ExternalConfigInfoGrayPersistServiceImpl implements ConfigInfoGrayP
         tjt.execute(new TransactionCallbackWithoutResult() {
             @Override
             protected void doInTransactionWithoutResult(TransactionStatus status) {
-                String tenantTmp = StringUtils.isBlank(tenant) ? StringUtils.EMPTY : tenant;
+                String tenantTmp = ConfigStorageTenantUtil.normalizeTenant(tenant);
                 String grayNameTmp = StringUtils.isBlank(grayName) ? StringUtils.EMPTY : grayName;
                 try {
                     ConfigInfoGrayWrapper oldConfigAllInfo4Gray = findConfigInfo4Gray(dataId, group, tenantTmp,
@@ -329,7 +329,7 @@ public class ExternalConfigInfoGrayPersistServiceImpl implements ConfigInfoGrayP
     @Override
     public ConfigInfoGrayWrapper findConfigInfo4Gray(final String dataId, final String group, final String tenant,
             final String grayName) {
-        String tenantTmp = StringUtils.isBlank(tenant) ? StringUtils.EMPTY : tenant;
+        String tenantTmp = ConfigStorageTenantUtil.normalizeTenant(tenant);
         String grayNameTmp = StringUtils.isBlank(grayName) ? StringUtils.EMPTY : grayName.trim();
         try {
             ConfigInfoGrayMapper configInfoGrayMapper = mapperManager.findMapper(dataSourceService.getDataSourceType(),
@@ -402,7 +402,7 @@ public class ExternalConfigInfoGrayPersistServiceImpl implements ConfigInfoGrayP
     
     @Override
     public List<String> findConfigInfoGrays(final String dataId, final String group, final String tenant) {
-        String tenantTmp = StringUtils.isBlank(tenant) ? StringUtils.EMPTY : tenant;
+        String tenantTmp = ConfigStorageTenantUtil.normalizeTenant(tenant);
         ConfigInfoGrayMapper configInfoGrayMapper = mapperManager.findMapper(dataSourceService.getDataSourceType(),
                 TableConstant.CONFIG_INFO_GRAY);
         String selectSql = configInfoGrayMapper.select(Collections.singletonList("gray_name"),

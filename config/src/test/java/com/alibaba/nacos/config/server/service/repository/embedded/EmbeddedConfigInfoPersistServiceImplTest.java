@@ -123,7 +123,7 @@ class EmbeddedConfigInfoPersistServiceImplTest {
     
     @Test
     void testInsertOrUpdateOfInsertConfigSuccess() {
-        
+
         String dataId = "dataId";
         String group = "group";
         String tenant = "tenant";
@@ -188,7 +188,7 @@ class EmbeddedConfigInfoPersistServiceImplTest {
                         eq(ConfigExtInfoUtil.getExtraInfoFromAdvanceInfoMap(configAdvanceInfo, srcUser)));
         
     }
-    
+
     @Test
     void testInsertOrUpdateCasOfInsertConfigSuccess() {
         
@@ -864,6 +864,18 @@ class EmbeddedConfigInfoPersistServiceImplTest {
         assertEquals(tagStrings, configTags);
     }
     
+    @Test
+    void testSelectTagByConfigWithNullTenantNormalized() {
+        String dataId = "dataId4567222";
+        String group = "group3456789";
+
+        List<String> tagStrings = Arrays.asList("", "", "");
+        when(databaseOperate.queryMany(anyString(), eq(new Object[] {dataId, group, ""}),
+                eq(String.class))).thenReturn(tagStrings);
+        List<String> configTags = embeddedConfigInfoPersistService.selectTagByConfig(dataId, group, null);
+        assertEquals(tagStrings, configTags);
+    }
+
     @Test
     void testFindConfigInfosByIds() {
         
