@@ -23,7 +23,7 @@ describe('Sidebar platform layout', () => {
   it('auto-expands platform management when setting center is active', () => {
     const platformPathsBlock = SIDEBAR_SOURCE.slice(
       SIDEBAR_SOURCE.indexOf('const platformPaths = ['),
-      SIDEBAR_SOURCE.indexOf('if (platformPaths.some'),
+      SIDEBAR_SOURCE.indexOf('const platformActive ='),
     );
 
     expect(platformPathsBlock).toContain("'/settingCenter'");
@@ -35,7 +35,7 @@ describe('Sidebar platform layout', () => {
       SIDEBAR_SOURCE.indexOf('</aside>'),
     );
 
-    expect(bottomBlock).toContain('{version && `v${version}`}');
+    expect(bottomBlock).toContain('{consoleBranding.showVersion && version && `v${version}`}');
     expect(bottomBlock).toContain('{startupMode && ` · ${startupMode}`}');
     expect(bottomBlock).not.toContain('settingCenter');
     expect(bottomBlock).not.toContain('toggleSidebar');
