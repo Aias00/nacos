@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+import ConsoleLogo from '../../components/ConsoleLogo';
+import { consoleBranding } from '../../utils/branding';
 import React from 'react';
 import { Button, Card, Form, Input, Message, ConfigProvider, Field } from '@alifd/next';
 import { withRouter } from 'react-router-dom';
@@ -140,8 +142,8 @@ class Login extends React.Component {
           }}
         >
           <div className="vertical-middle product-area">
-            <img className="product-logo" src="img/nacos.png" />
-            <p className="product-desc">{locale.productDesc}</p>
+            <ConsoleLogo className="product-logo" src="img/nacos.png" alt="Nacos" />
+            <p className="product-desc">{consoleBranding.name || locale.productDesc}</p>
           </div>
           <div className="animation animation1" />
           <div className="animation animation2" />

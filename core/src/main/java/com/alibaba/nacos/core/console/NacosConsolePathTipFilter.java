@@ -61,6 +61,10 @@ public class NacosConsolePathTipFilter implements Filter {
             String indexPath = contextPath + "index.html";
             String requestUri = httpServletRequest.getRequestURI();
             if (requestUri.equals(contextPath) || requestUri.equals(indexPath)) {
+                if (!EnvUtil.getProperty("nacos.server.console-tip.enabled", Boolean.class, true)) {
+                    httpServletResponse.setStatus(HttpServletResponse.SC_NOT_FOUND);
+                    return;
+                }
                 writeConsoleInfo(httpServletResponse);
                 return;
             }
@@ -79,7 +83,13 @@ public class NacosConsolePathTipFilter implements Filter {
     }
     
     private void writeConsoleInfo(HttpServletResponse httpServletResponse) throws IOException {
+        httpServletResponse.setCharacterEncoding("UTF-8");
         httpServletResponse.setContentType(MediaType.TEXT_PLAIN);
+        String message = EnvUtil.getProperty("nacos.server.console-tip.message");
+        if (StringUtils.isNotBlank(message)) {
+            httpServletResponse.getWriter().write(message);
+            return;
+        }
         String port = EnvUtil.getProperty(NACOS_CONSOLE_PORT, NACOS_CONSOLE_DEFAULT_PORT);
         String consoleContextPath = EnvUtil.getProperty(NACOS_CONSOLE_CONTEXT_PATH);
         consoleContextPath = StringUtils.isBlank(consoleContextPath) ? NACOS_CONSOLE_DEFAULT_PATH

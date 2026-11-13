@@ -25,12 +25,18 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.core.io.ClassPathResource;
+
+import java.nio.charset.StandardCharsets;
 
 import static org.mockito.Mockito.mockStatic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.hamcrest.Matchers.containsString;
 
 @ExtendWith(MockitoExtension.class)
 class ConsoleRedirectControllerTest {
@@ -76,5 +82,43 @@ class ConsoleRedirectControllerTest {
     void testLegacyForwardsToIndexHtml() throws Exception {
         mockMvc.perform(get("/legacy/")).andExpect(status().isOk())
             .andExpect(forwardedUrl("/legacy/index.html"));
+    }
+    
+    @Test
+    void testDefaultIndexResourcesRemainUnchanged() throws Exception {
+        for (String ui : new String[] {"next", "legacy", "console-ui"}) {
+            String original = new ClassPathResource("static/" + ui + "/index.html")
+                .getContentAsString(StandardCharsets.UTF_8);
+            mockMvc.perform(get("/" + ui + "/index.html")).andExpect(status().isOk())
+                .andExpect(content().string(original))
+                .andExpect(header().string("Cache-Control", "no-store"));
+        }
+    }
+    
+    @Test
+    void testBrandingIsAvailableInBothEntriesWithConsoleContextPath() throws Exception {
+        mockedEnvUtil.when(() -> EnvUtil.getProperty("nacos.console.brand.name", ""))
+            .thenReturn("Internal Console");
+        for (String ui : new String[] {"next", "legacy"}) {
+            mockMvc.perform(get("/console/" + ui + "/index.html").contextPath("/console"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("<title>Internal Console</title>")))
+                .andExpect(content().string(containsString("type=\"application/json\"")));
+        }
+    }
+    
+    @Test
+    void testHistoricalEntryRedirectsToConfiguredUiWhenBranded() throws Exception {
+        mockedEnvUtil.when(() -> EnvUtil.getProperty("nacos.console.brand.name", ""))
+            .thenReturn("Internal Console");
+        for (String ui : new String[] {"next", "legacy"}) {
+            mockedEnvUtil.when(() -> EnvUtil.getProperty("nacos.console.ui.default", "next"))
+                .thenReturn(ui);
+            for (String path : new String[] {"/console-ui/", "/console-ui/index.html"}) {
+                mockMvc.perform(get("/console" + path).contextPath("/console"))
+                    .andExpect(status().isFound())
+                    .andExpect(redirectedUrl("/console/" + ui + "/"));
+            }
+        }
     }
 }

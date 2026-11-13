@@ -1,3 +1,5 @@
+import ConsoleLogo from '../../components/ConsoleLogo';
+import { consoleBranding } from '../../utils/branding';
 import React from 'react';
 import { Card, Form, Input, Message, ConfigProvider, Field, Dialog } from '@alifd/next';
 import { withRouter } from 'react-router-dom';
@@ -131,8 +133,8 @@ class Register extends React.Component {
           }}
         >
           <div className="vertical-middle product-area">
-            <img className="product-logo" src="img/nacos.png" />
-            <p className="product-desc">{locale.Login.productDesc}</p>
+            <ConsoleLogo className="product-logo" src="img/nacos.png" alt="Nacos" />
+            <p className="product-desc">{consoleBranding.name || locale.Login.productDesc}</p>
           </div>
           <div className="animation animation1" />
           <div className="animation animation2" />

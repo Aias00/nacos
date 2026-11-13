@@ -40,6 +40,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
@@ -308,6 +310,43 @@ class NacosConsolePathTipFilterTest {
             String.format("Nacos Console default port is %s, and the path is %s.",
                 EnvUtil.getProperty("nacos.console.port"),
                 EnvUtil.getProperty("nacos.console.contextPath")));
+    }
+    
+    @Test
+    void testDisabledHintReturnsEmptyNotFoundForRootAndIndex() throws Exception {
+        environment.setProperty("nacos.server.console-tip.enabled", "false");
+        environment.setProperty("nacos.server.contextPath", "/custom");
+        for (String path : new String[] {"/custom/", "/custom/index.html"}) {
+            HttpServletResponse target = mock(HttpServletResponse.class);
+            when(request.getRequestURI()).thenReturn(path);
+            filter.doFilter(request, target, filterChain);
+            verify(target).setStatus(HttpServletResponse.SC_NOT_FOUND);
+            verifyNoMoreInteractions(target);
+        }
+        verifyNoInteractions(filterChain);
+    }
+    
+    @Test
+    void testCustomHintIsLiteralUtf8Text() throws Exception {
+        environment.setProperty("nacos.server.console-tip.message", "内部服务 100% %s");
+        environment.setProperty("nacos.server.contextPath", "/");
+        when(request.getRequestURI()).thenReturn("/");
+        filter.doFilter(request, response, filterChain);
+        assertEquals("内部服务 100% %s", responseWriter.toString());
+        verify(response).setCharacterEncoding("UTF-8");
+    }
+    
+    @Test
+    void testDisabledHintDoesNotInterceptSdkHealthOrBusinessApi() throws Exception {
+        environment.setProperty("nacos.server.console-tip.enabled", "false");
+        environment.setProperty("nacos.server.contextPath", "/nacos");
+        for (String path : new String[] {"/nacos/v3/admin/core/state/liveness",
+            "/nacos/v3/client/ns/instance", "/nacos/v3/client/cs/config"}) {
+            HttpServletRequest target = mock(HttpServletRequest.class);
+            when(target.getRequestURI()).thenReturn(path);
+            filter.doFilter(target, response, filterChain);
+            verify(filterChain).doFilter(target, response);
+        }
     }
     
 }

@@ -1,3 +1,5 @@
+import { consoleBranding } from '@/lib/branding';
+import { ConsoleLogo } from '@/components/layout/console-logo';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -101,14 +103,14 @@ export default function LoginPage() {
               <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
               <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-1/3 -translate-x-1/3" />
               <div className="relative z-10">
-                <img
+                <ConsoleLogo
                   src={`${import.meta.env.BASE_URL}img/nacos-logo.svg`}
                   alt="Nacos"
                   className="h-10 mb-2"
                 />
-                <p className="text-xs text-white/60 mb-6">Dynamic Naming and Configuration Service</p>
+                {!consoleBranding.name && <p className="text-xs text-white/60 mb-6">Dynamic Naming and Configuration Service</p>}
                 <p className="text-sm text-white/85 leading-relaxed mb-8">
-                  {t('login.productDesc')}
+                  {consoleBranding.name || t('login.productDesc')}
                 </p>
                 {/* Decorative lines */}
                 <div className="space-y-2">

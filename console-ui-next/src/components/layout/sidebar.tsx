@@ -25,6 +25,8 @@ import {
   Package,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { consoleBranding } from '@/lib/branding';
+import { ConsoleLogo } from './console-logo';
 import { useAppStore } from '@/stores/app-store';
 import { useAuthStore } from '@/stores/auth-store';
 import { useServerStore } from '@/stores/server-store';
@@ -205,7 +207,7 @@ export function Sidebar() {
       {/* Header - Logo */}
       <div className="flex h-14 items-center justify-center border-b border-sidebar-border">
         {!sidebarCollapsed ? (
-          <img
+          <ConsoleLogo
             src={`${import.meta.env.BASE_URL}img/nacos-logo-dark.svg`}
             alt="Nacos"
             className="h-6 w-auto max-w-[140px] object-contain"
@@ -213,14 +215,16 @@ export function Sidebar() {
         ) : (
           <Tooltip>
             <TooltipTrigger asChild>
-              <img
-                src={`${import.meta.env.BASE_URL}img/nacos-icon.png`}
-                alt="Nacos"
-                className="h-7 w-7 object-contain cursor-default"
-              />
+              <span>
+                <ConsoleLogo
+                  src={`${import.meta.env.BASE_URL}img/nacos-icon.png`}
+                  alt="Nacos"
+                  className="block h-7 w-7 object-contain cursor-default truncate"
+                />
+              </span>
             </TooltipTrigger>
             <TooltipContent side="right" sideOffset={8} className="rounded-lg border border-border/50 bg-popover text-popover-foreground shadow-md px-3 py-2 text-xs font-medium">
-              NACOS {version && `v${version}`}
+              {consoleBranding.name || 'NACOS'} {consoleBranding.showVersion && version && `v${version}`}
             </TooltipContent>
           </Tooltip>
         )}
@@ -323,7 +327,7 @@ export function Sidebar() {
       <div className="border-t border-sidebar-border px-2 py-3">
         {!sidebarCollapsed && (
           <div className="min-h-5 px-2 text-center text-xs leading-5 text-muted-foreground">
-            {version && `v${version}`}
+            {consoleBranding.showVersion && version && `v${version}`}
             {startupMode && ` · ${startupMode}`}
           </div>
         )}

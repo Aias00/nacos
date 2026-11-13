@@ -125,6 +125,33 @@ Console guide 和 announcement 内容属于 UI 展示数据，不是标准 Core 
 从选中的 Online Version 创建新 Draft；只有保留的 MCP Resource 在唯一首个 Draft 删除后不存在任何
 Version 时，才展示通用“新建版本”入口。
 
+### 5.1 可选展示配置
+
+以下配置属于部署本地的展示设置，未配置时保持原 UI 行为：
+
+| 配置 | 默认值 | 行为 |
+| --- | --- | --- |
+| `nacos.server.console-tip.enabled` | `true` | merged 部署中控制 Server context 根路径和首页的控制台提示；`false` 仅在这些提示路径返回空 HTTP 404。 |
+| `nacos.server.console-tip.message` | 空 | 非空白文本按原文替换提示，否则继续显示原控制台端口和路径提示。 |
+| `nacos.console.brand.name` | 空 | 替换 Next 和 Legacy UI 的浏览器标题及主要产品名称。 |
+| `nacos.console.brand.logo` | 空 | 替换主要 UI Logo；只配置名称时使用文字标识。 |
+| `nacos.console.brand.favicon` | 空 | 替换 HTML favicon 链接。 |
+| `nacos.console.brand.show-version` | `true` | 仅控制 UI 中的产品版本标签。 |
+
+图片配置接受相对 URL、站点根路径或 HTTP(S) URL；忽略协议相对 URL 和其他协议。
+相对路径以所选 UI 入口为基准；Console 使用 context path 时，应在图片 URL 中包含该路径。
+自定义图片由部署环境提供。
+
+仅在现有 Next/Legacy index HTML 资源中注入经过转义的静态 JSON 展示数据，无需可执行内联脚本或
+新增初始化请求，保留现有 Content Security Policy。配置应一致应用到每个 Console 实例，并重启相应进程；
+浏览器刷新后加载新展示。
+
+历史 `/console-ui/` 和 `/console-ui/index.html` 入口默认保留原 HTML；配置品牌后，跳转到同一 Console
+context path 下选中的 Next/Legacy UI，避免旧资源入口绕过品牌设置。
+
+这些配置不得改变 API 路由、鉴权、响应结构、公开状态字段、健康探针、SDK/gRPC 消息或集群版本元数据。
+隐藏 UI 版本标签不会隐藏公开状态 API 中的版本，也不会移除所有具有产品特征的静态资源和文案。
+
 ## 6. Handler 与 Proxy 边界
 
 Console Controller 必须通过 proxy 和 handler interface 进行委托，不应把 UI Controller 直接耦合到

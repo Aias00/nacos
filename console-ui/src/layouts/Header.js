@@ -20,6 +20,7 @@ import PropTypes from 'prop-types';
 import { connect } from 'react-redux';
 import { ConfigProvider, Dropdown, Menu, Message } from '@alifd/next';
 import siteConfig from '../config';
+import ConsoleLogo from '../components/ConsoleLogo';
 import { changeLanguage } from '@/reducers/locale';
 import PasswordReset from '../pages/AuthorityControl/UserManagement/PasswordReset';
 import { passwordReset } from '../reducers/authority';
@@ -141,7 +142,7 @@ class Header extends React.Component {
         <header className="header-container header-container-primary">
           <div className="header-body">
             <a href="#" onClick={this.indexAction} rel="noopener noreferrer">
-              <img
+              <ConsoleLogo
                 src="img/logo-2000-390.svg"
                 className="logo"
                 alt={siteConfig.name}

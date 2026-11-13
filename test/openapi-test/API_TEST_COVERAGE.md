@@ -42,6 +42,16 @@ missing parameters and pagination remain covered by existing scenarios. Plugin s
 is covered by registry/Form/query tests. Extended-plugin deployments are outside the
 default standalone HTTP suite. Surface counts and classifications remain unchanged.
 
+## Optional Console presentation
+
+`ConsolePresentationITCase` covers anonymous Next/Legacy HTML entries and optional
+expectations for deployment-configured branding. An explicitly selected merged
+profile also checks configurable Server root/index hints. The
+[Console presentation matrix](CONSOLE_API_TEST_SCENARIOS.md#console-presentation-outside-api-surface-totals)
+records configuration, boundaries and environment requirements. Existing state,
+health, JSON API and SDK contracts remain unchanged. Static HTML presentation
+checks are outside the business API-surface totals below.
+
 ## Maintenance Rules
 
 - Update the matching scenario document whenever an OpenAPI/AdminAPI/ConsoleAPI

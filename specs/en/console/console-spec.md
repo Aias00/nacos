@@ -152,6 +152,38 @@ or rejected visual states. On MCP detail, a new draft is created from the select
 online Version; the generic new-Version entry is shown only for a retained MCP
 Resource that has no Version after its sole initial draft was deleted.
 
+### 5.1 Optional presentation configuration
+
+Deployment-local presentation settings preserve the original UI when omitted:
+
+| Property | Default | Behavior |
+| --- | --- | --- |
+| `nacos.server.console-tip.enabled` | `true` | In merged deployment, controls the Server context-root and index-page hint. `false` returns an empty HTTP 404 only for these hint paths. |
+| `nacos.server.console-tip.message` | empty | Nonblank text replaces the hint literally; otherwise the original console port/path hint is used. |
+| `nacos.console.brand.name` | empty | Replaces the browser title and primary product labels in Next and Legacy UI. |
+| `nacos.console.brand.logo` | empty | Replaces primary UI logos. A custom name without a logo uses a text label. |
+| `nacos.console.brand.favicon` | empty | Replaces the HTML favicon link. |
+| `nacos.console.brand.show-version` | `true` | Controls UI product-version labels only. |
+
+Image settings accept relative URLs, site-root-relative paths or HTTP(S) URLs;
+protocol-relative URLs and other schemes are ignored. Relative paths resolve
+against the selected UI entry, so deployments with a Console context path should
+use a URL that includes that path. Custom assets must be served by the deployment.
+
+Only the existing Next/Legacy index HTML resources receive presentation data,
+encoded as inert, escaped JSON. Executable inline scripts and additional bootstrap
+requests are not required. The existing Content Security Policy is preserved.
+The historical `/console-ui/` and `/console-ui/index.html` entries retain their
+original HTML by default. When branding is configured, they redirect to the
+selected Next/Legacy UI under the same Console context path.
+Apply configuration consistently to each Console instance and restart the affected
+processes; refreshing a browser page loads the new presentation.
+
+These settings do not alter API routes, authentication, response envelopes,
+public state fields, health probes, SDK/gRPC messages or cluster version metadata.
+UI version hiding does not hide the version from public state APIs or remove
+all product-specific static resources and text.
+
 ## 6. Handler And Proxy Boundary
 
 Console controllers must delegate through proxy and handler interfaces rather

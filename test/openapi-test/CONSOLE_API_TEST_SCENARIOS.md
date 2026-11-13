@@ -72,6 +72,33 @@ API layer and resource/version descriptors remain available for retry.
 | `ServerStateConsoleApiOpenApiITCase` | `GET /v3/console/server/state`<br>`GET /v3/console/server/announcement`<br>`GET /v3/console/server/guide` | Covered | Verifies server state exposes expected state keys and announcement/guide endpoints return controlled wrapped data in the default standalone environment. These APIs do not mutate state. |
 | `PluginConsoleApiOpenApiITCase` | `GET /v3/console/plugin`<br>`GET /v3/console/plugin/list`<br>`GET /v3/console/plugin/availability`<br>`GET /v3/console/plugin/config`<br>`PUT /v3/console/plugin/config`<br>`PUT /v3/console/plugin/status` | Partial | Verifies enabled plugin availability values and node counts against the list entry, missing availability parameters and unknown-plugin errors, and plugin list/detail/availability response shapes, including `typeCritical`, `executionMode`, `exclusive`, and the `configValueMetas` map shape; verifies the built-in `auth:nacos`, `auth:ldap`, and `auth:oidc` definitions, legacy aliases, effect modes, effective values, source metadata, and secret metadata/masking; verifies a local-only runtime update and empty-map source clear through refreshed detail metadata; verifies that critical disable, exclusive runtime-switch, and OIDC restart-only updates are rejected; covers controlled validation/not-found errors and rejection of config updates for non-configurable plugins. Standalone IT covers local availability only; cross-node fan-out requires a cluster and is not exercised here. Core payload regression tests cover SPI registration and request/response serialization for both single-plugin and query-all probes (issue #15836). Persisted runtime mutation is not exercised to avoid carrying plugin state into later SDK suites. Anonymous AI access is not exercised by standalone OpenAPI IT; explicit credential presence, blank credential rejection, and HTTP 403 `ACCESS_DENIED` error mapping are covered by auth/core unit tests. Persisted full-map replacement/removal, key normalization, runtime/restart checks, same-source sensitive value preservation, persistence failure isolation, and retained-source apply failure/retry are covered by core and plugin unit tests. |
 
+## Console presentation (outside API-surface totals)
+
+`ConsolePresentationITCase` checks the existing `/next/`, `/next/index.html`,
+`/legacy/`, `/legacy/index.html`, `/console-ui/` and `/console-ui/index.html` entries
+as anonymous HTML (following the historical-entry redirect when branded). With no branding
+settings, the entries contain no branding data block. A separately configured
+deployment can assert `name`, `logo`, `favicon` and `showVersion` using
+`-Dnacos.test.brand.name=...`, `-Dnacos.test.brand.logo=...`,
+`-Dnacos.test.brand.favicon=...` and `-Dnacos.test.brand.show-version=false`.
+These test properties describe expected server settings; they do not configure
+the server. Use `nacos.test.console.context-path` for a non-root Console context.
+
+For a merged deployment, `-Dnacos.test.presentation.merged=true` also checks the
+Server root/index hint. `nacos.test.console-tip.enabled` (default `true`),
+`nacos.test.console-tip.message` and `nacos.test.server.context-path` describe the
+expected deployed settings. The hint test is not run against server-only or
+independent Console deployments. Focused Core tests cover default/custom/disabled
+hints, context paths and unaffected SDK health/Config/Naming paths. Focused Console
+tests cover default HTML, custom branding, script-closing text and invalid image
+URLs. Browser rendering is checked by frontend component tests and build/smoke
+validation; this HTTP IT does not execute JavaScript.
+
+No Client/Admin/Console JSON API or SDK contract changes. Existing
+`CoreStateAdminApiOpenApiITCase`, `ServerStateConsoleApiOpenApiITCase` and
+`HealthConsoleApiOpenApiITCase` remain the compatibility checks for state and health.
+These static-entry scenarios are not added to the business API totals.
+
 ## Config
 
 | API surface / IT class | Covered API operations | Current status | Current / missing coverage |

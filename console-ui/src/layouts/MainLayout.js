@@ -20,6 +20,7 @@ import { connect } from 'react-redux';
 import PropTypes from 'prop-types';
 import { ConfigProvider, Icon, Menu, Message, Dialog, Badge } from '@alifd/next';
 import Header from './Header';
+import { consoleBranding } from '../utils/branding';
 import { getState, getNotice, getGuide } from '../reducers/base';
 import getMenuData from './menu';
 import './index.scss';
@@ -160,8 +161,8 @@ class MainLayout extends React.Component {
                 ) : (
                   <>
                     <h1 className="nav-title">
-                      {locale.nacosName}
-                      <span>{version}</span>
+                      {consoleBranding.name || locale.nacosName}
+                      {consoleBranding.showVersion && <span>{version}</span>}
                     </h1>
                     <h1 className="nav-mode">
                       {locale.nacosMode}
