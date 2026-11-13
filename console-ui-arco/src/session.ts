@@ -18,6 +18,11 @@ import type { RuntimeConfig, Session } from './types';
 export const SESSION_KEY = 'nacos.arco.session.v1';
 export const SESSION_EVENT = 'nacos-arco-session-change';
 
+function directPreview() {
+  return runtime().enableDemo
+    && new URLSearchParams(window.location.search || '').get('preview') === 'demo';
+}
+
 export function runtime(): RuntimeConfig {
   const config = typeof window === 'undefined' ? {} : window.CONSOLE_CONFIG || {};
   return {
@@ -28,6 +33,9 @@ export function runtime(): RuntimeConfig {
 }
 
 export function readSession(): Session | null {
+  if (directPreview()) {
+    return { mode: 'demo', accessToken: 'demo-only', username: 'demo', globalAdmin: true };
+  }
   try {
     const session: Session = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
     return session && (session.mode === 'live' || session.mode === 'demo')
@@ -37,6 +45,13 @@ export function readSession(): Session | null {
 }
 
 export function writeSession(session: Session | null) {
+  if (!session && directPreview()) {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('preview');
+    window.history.replaceState(null, '', url);
+    window.dispatchEvent(new Event(SESSION_EVENT));
+    return;
+  }
   if (session) localStorage.setItem(SESSION_KEY, JSON.stringify(session));
   else localStorage.removeItem(SESSION_KEY);
   window.dispatchEvent(new Event(SESSION_EVENT));

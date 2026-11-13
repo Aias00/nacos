@@ -150,6 +150,8 @@ Console/Auth APIs, without adding a server UI default or changing client protoco
 Its runtime configuration specifies the product name and same-origin API prefix.
 Demo mode must be explicitly labeled and operate only on browser-local sample data;
 failed live authentication must not enable demo mode. Namespace selection uses IDs.
+Explicit preview links must preserve saved live sessions; leaving preview removes
+the preview marker and restores the saved session.
 Config publication and instance updates must preserve the namespace and resource
 identity associated with the opened operation.
 

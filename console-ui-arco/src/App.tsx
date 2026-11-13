@@ -81,7 +81,7 @@ function Shell({ session }: { session: Session }) {
           {session.mode === 'demo' && <Tag color="orange">演示环境</Tag>}
           <Tooltip content={dark ? '浅色模式' : '深色模式'}><Button type="text" shape="circle" aria-label={dark ? '浅色模式' : '深色模式'}
             icon={dark ? <IconSun /> : <IconMoon />} onClick={() => setDark(!dark)} /></Tooltip>
-          <Dropdown droplist={<Menu onClickMenuItem={() => writeSession(null)}><Menu.Item key="logout"><IconPoweroff /> 退出登录</Menu.Item></Menu>} position="br">
+          <Dropdown droplist={<Menu onClickMenuItem={() => writeSession(null)}><Menu.Item key="logout"><IconPoweroff /> {session.mode === 'demo' ? '退出演示' : '退出登录'}</Menu.Item></Menu>} position="br">
             <Button type="text" className="user-button"><Avatar size={28}><IconUser /></Avatar><span>{session.username}</span></Button>
           </Dropdown>
         </Space>

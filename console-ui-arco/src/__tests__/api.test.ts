@@ -15,7 +15,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { api, request } from '../api';
-import { readSession, SESSION_KEY } from '../session';
+import { readSession, SESSION_KEY, writeSession } from '../session';
 import type { Config, Page } from '../types';
 
 const storage = new Map<string, string>();
@@ -135,6 +135,29 @@ describe('Nacos console HTTP contract', () => {
 });
 
 describe('isolated demonstration data', () => {
+  it('opens explicit preview without overwriting the saved live session', () => {
+    live();
+    window.location.search = '?preview=demo';
+    expect(readSession()?.mode).toBe('demo');
+    expect(JSON.parse(storage.get(SESSION_KEY)!).accessToken).toBe('test-token');
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it('ignores preview links when demonstration is disabled', () => {
+    window.location.search = '?preview=demo';
+    window.CONSOLE_CONFIG = { enableDemo: false };
+    expect(readSession()).toBeNull();
+  });
+  it('restores the previous live session on leaving direct preview', () => {
+    live();
+    window.location.search = '?preview=demo';
+    window.location.href = 'http://console.test/?preview=demo#/overview';
+    Object.defineProperty(window, 'history', {
+      value: { replaceState: vi.fn(() => { window.location.search = ''; }) }, configurable: true,
+    });
+    writeSession(null);
+    expect(readSession()?.accessToken).toBe('test-token');
+    expect(dispatch).toHaveBeenCalledOnce();
+  });
   it('supports config CRUD, history and namespace isolation without any network requests', async () => {
     storage.set(SESSION_KEY, JSON.stringify({ mode: 'demo', accessToken: 'demo-only', username: 'demo', globalAdmin: true }));
     const target = { namespaceId: 'dev', dataId: 'arco-test.yaml', groupName: 'TEST_GROUP' };
