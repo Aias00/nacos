@@ -145,6 +145,14 @@ Console owns the browser entry and static asset serving behavior:
 Console guide and announcement content are UI presentation data. They are not
 canonical Core server state and must not be used as domain configuration.
 
+`console-ui-arco` is an independently hosted React/Arco frontend using the existing
+Console/Auth APIs, without adding a server UI default or changing client protocols.
+Its runtime configuration specifies the product name and same-origin API prefix.
+Demo mode must be explicitly labeled and operate only on browser-local sample data;
+failed live authentication must not enable demo mode. Namespace selection uses IDs.
+Config publication and instance updates must preserve the namespace and resource
+identity associated with the opened operation.
+
 In the Next UI, entering a sidebar group must expand it automatically. Users must
 still be able to collapse the active group, including the platform section,
 without changing the current page.

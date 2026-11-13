@@ -1,0 +1,64 @@
+/*
+ * Copyright 1999-2026 Alibaba Group Holding Ltd.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/* Arco Pro layout spacing; component appearance comes from the official theme. */
+body { margin: 0; background: var(--color-fill-2); color: var(--color-text-1); }
+.console-layout { min-height: 100vh; }
+.console-navbar { height: 60px; position: fixed; inset: 0 0 auto; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between; padding: 0 20px;
+  background: var(--color-bg-2); border-bottom: 1px solid var(--color-border-2); }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 18px; white-space: nowrap; }
+.brand > svg, .login-brand > svg { color: rgb(var(--primary-6)); font-size: 28px; }
+.user-button > .arco-btn-icon + span, .user-button { display: inline-flex; align-items: center; gap: 8px; }
+.console-sider { position: fixed; left: 0; top: 60px; bottom: 0; z-index: 90; background: var(--color-bg-2); border-right: 1px solid var(--color-border-2); }
+.console-sider .arco-layout-sider-children { display: flex; flex-direction: column; overflow-y: auto; }
+.console-sider .arco-menu { padding-top: 12px; }
+.sider-toggle { margin: 8px; flex-shrink: 0; }
+.console-body { min-width: 0; padding-top: 60px; transition: margin-left .2s; background: var(--color-fill-2); }
+.console-content { padding: 20px; }
+.console-footer { padding: 20px; text-align: center; color: var(--color-text-3); font-size: 12px; }
+.demo-banner { margin-bottom: 20px; }
+.page-loading { display: flex; align-items: center; justify-content: center; min-height: 300px; }
+.page-stack { display: flex; flex-direction: column; gap: 20px; }
+.page-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.page-heading h4 { margin: 0; }
+.filter-form { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px; }
+.filter-form .arco-form-item { margin-bottom: 0; }
+.table-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+.editor-frame { border: 1px solid var(--color-border-2); border-radius: var(--border-radius-small); overflow: hidden; }
+.mono { font-family: Menlo, Consolas, monospace; }
+.muted { color: var(--color-text-3); }
+.login-page { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; padding: 24px; box-sizing: border-box; }
+.login-brand { display: flex; align-items: center; gap: 12px; font-size: 24px; font-weight: 600; }
+.login-card { width: 420px; max-width: 100%; padding: 12px 16px; }
+.login-footer { font-size: 12px; }
+.overview-stat .arco-statistic { padding: 8px 0; }
+@media (max-width: 900px) {
+  .namespace-label { display: none; }
+  .namespace-picker .arco-select { width: 160px !important; }
+  .console-navbar { padding: 0 12px; }
+  .brand { font-size: 15px; }
+  .navbar-actions { gap: 6px !important; }
+}
+@media (max-width: 600px) {
+  .brand span, .user-button > span:last-child { display: none; }
+  .console-content { padding: 12px; }
+  .page-stack { gap: 12px; }
+  .namespace-picker .arco-select { width: 138px !important; }
+  .filter-form .arco-form-item { width: 100%; margin-right: 0; }
+  .filter-form .arco-form-item-control { min-width: 0; flex: 1; }
+  .filter-form .arco-form-label-item { white-space: nowrap; min-width: 64px; }
+  .filter-form .arco-input-wrapper { width: 100% !important; }
+}
