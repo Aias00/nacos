@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { api, request } from '../api';
+import { api, request, updateInstanceAndWait } from '../api';
 import { readSession, SESSION_KEY, writeSession } from '../session';
 import type { Config, Page } from '../types';
 
@@ -40,6 +40,27 @@ function respond(body: unknown, status = 200) {
 }
 
 describe('Nacos console HTTP contract', () => {
+  it('waits for instance metadata visibility before treating an accepted update as complete', async () => {
+    live();
+    vi.useFakeTimers();
+    try {
+      const row = { ip: '127.0.0.1', port: 8848, clusterName: 'DEFAULT', enabled: true };
+      vi.mocked(fetch)
+        .mockResolvedValueOnce(new Response(JSON.stringify({ code: 0, data: 'ok' })))
+        .mockResolvedValueOnce(new Response(JSON.stringify({ code: 0, data: { totalCount: 1, pageItems: [row] } })))
+        .mockResolvedValueOnce(new Response(JSON.stringify({ code: 0, data: { totalCount: 1, pageItems: [{ ...row, enabled: false }] } })));
+      const pending = updateInstanceAndWait({ namespaceId: 'dev', groupName: 'GROUP', serviceName: 'test',
+        ip: row.ip, port: row.port, clusterName: row.clusterName, enabled: false, ephemeral: false, weight: 1 }, 2);
+      await vi.advanceTimersByTimeAsync(350);
+      await pending;
+      expect(fetch).toHaveBeenCalledTimes(3);
+      const query = new URL(String(vi.mocked(fetch).mock.calls[2][0])).searchParams;
+      expect(query.get('namespaceId')).toBe('dev');
+      expect(query.get('groupName')).toBe('GROUP');
+      expect(query.get('serviceName')).toBe('test');
+      expect(query.get('pageNo')).toBe('2');
+    } finally { vi.useRealTimers(); }
+  });
   it('unwraps Result data and uses the explicit API base', async () => {
     respond({ code: 0, data: [{ namespace: 'namespace-id', namespaceShowName: 'Display Name' }] });
     expect(await api.namespaces()).toEqual([{ namespace: 'namespace-id', namespaceShowName: 'Display Name' }]);

@@ -16,7 +16,7 @@
 import { useCallback, useState } from 'react';
 import { Button, Card, Descriptions, Drawer, Form, Input, Message, Modal, Space, Switch, Table, Tabs, Tag, Typography } from '@arco-design/web-react';
 import { IconRefresh, IconSearch } from '@arco-design/web-react/icon';
-import { api } from '../api';
+import { api, updateInstanceAndWait } from '../api';
 import { useConsole } from '../context';
 import { useResource } from '../useResource';
 import RequestError from '../RequestError';
@@ -69,8 +69,8 @@ function ServicePanel({ service, subscribersOnly }: { service: Service; subscrib
       content: `${service.name} · ${row.ip}:${row.port} · ${row.clusterName}`,
       okText: enabled ? '上线' : '下线', okButtonProps: { status: enabled ? undefined : 'warning' }, onOk: async () => {
         try {
-          await api.updateInstance({ ...target, ip: row.ip, port: row.port, clusterName: row.clusterName,
-            weight: row.weight, enabled, ephemeral: row.ephemeral, metadata: JSON.stringify(row.metadata || {}) });
+          await updateInstanceAndWait({ ...target, ip: row.ip, port: row.port, clusterName: row.clusterName,
+            weight: row.weight, enabled, ephemeral: row.ephemeral, metadata: JSON.stringify(row.metadata || {}) }, page);
           Message.success(enabled ? '实例已上线' : '实例已下线'); resource.reload();
         } catch (error) { showError(error); throw error; }
       } });

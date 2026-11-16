@@ -152,6 +152,9 @@ Demo mode must be explicitly labeled and operate only on browser-local sample da
 failed live authentication must not enable demo mode. Namespace selection uses IDs.
 Explicit preview links must preserve saved live sessions; leaving preview removes
 the preview marker and restores the saved session.
+Arco instance enable/disable actions must confirm that a subsequent query of the
+same resource identity reflects the target state before reporting completion,
+because an immediate query can still return metadata from before the update.
 Config publication and instance updates must preserve the namespace and resource
 identity associated with the opened operation.
 

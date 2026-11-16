@@ -108,3 +108,17 @@ export const api = {
   roles: (pageNo: number) => request<Page<{ username: string; role: string }>>('v3/auth/role/list', { pageNo, pageSize: 10 }),
   permissions: (pageNo: number) => request<Page<{ role: string; resource: string; action: string }>>('v3/auth/permission/list', { pageNo, pageSize: 10 }),
 };
+
+export async function updateInstanceAndWait(params: Params, pageNo: number) {
+  await api.updateInstance(params);
+  const deadline = Date.now() + 10000;
+  while (true) {
+    const page = await api.instances({ namespaceId: params.namespaceId, groupName: params.groupName,
+      serviceName: params.serviceName, pageNo, pageSize: 10 });
+    const instance = page.pageItems.find((item) => item.ip === params.ip && item.port === Number(params.port)
+      && item.clusterName === params.clusterName);
+    if (instance && String(instance.enabled) === String(params.enabled)) return;
+    if (Date.now() >= deadline) throw new ApiError('实例状态尚未同步，请刷新列表确认', 0);
+    await new Promise((resolve) => setTimeout(resolve, 300));
+  }
+}
