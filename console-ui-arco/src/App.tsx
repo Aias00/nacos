@@ -20,7 +20,7 @@ import { Alert, Avatar, Breadcrumb, Button, Dropdown, Layout, Menu, Result, Sele
 import { IconApps, IconDashboard, IconFile, IconMenuFold, IconMenuUnfold, IconMoon, IconPoweroff, IconRobot, IconSettings, IconSun, IconThunderbolt, IconUser } from '@arco-design/web-react/icon';
 import { api } from './api';
 import { Context } from './context';
-import { readSession, runtime, SESSION_EVENT, SESSION_KEY, writeSession } from './session';
+import { readSession, readStorage, runtime, sessionEvent, storageKey, writeSession, writeStorage } from './session';
 import { useResource } from './useResource';
 import type { Namespace, Session } from './types';
 import Login from './Login';
@@ -47,12 +47,12 @@ function Shell({ session }: { session: Session }) {
   const location = useLocation();
   const navigate = useNavigate();
   const page = location.pathname.split('/')[1] || 'overview';
-  const namespaceKey = `nacos.arco.namespace.${session.mode}.${encodeURIComponent(session.username)}`;
-  const [selectedNamespace, updateNamespace] = useState(() => localStorage.getItem(namespaceKey) || 'public');
+  const namespaceSuffix = `namespace.${session.mode}.${encodeURIComponent(session.username)}`;
+  const [selectedNamespace, updateNamespace] = useState(() => readStorage(namespaceSuffix) || 'public');
   const [namespaceLocked, setNamespaceLocked] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [openMenus, setOpenMenus] = useState(['config', 'naming', 'ai', 'platform']);
-  const [dark, setDark] = useState(localStorage.getItem('nacos.arco.theme') === 'dark');
+  const [dark, setDark] = useState(readStorage('theme') === 'dark');
   const loadNamespaces = useCallback(async (signal: AbortSignal) => {
     const [namespaces, state] = await Promise.all([api.namespaces(signal), api.state(signal)]);
     return { namespaces, state };
@@ -68,11 +68,11 @@ function Shell({ session }: { session: Session }) {
   const reloadNamespaces = useCallback(async () => { refreshNamespaces(); }, [refreshNamespaces]);
   useEffect(() => {
     document.body.setAttribute('arco-theme', dark ? 'dark' : 'light');
-    localStorage.setItem('nacos.arco.theme', dark ? 'dark' : 'light');
+    writeStorage('theme', dark ? 'dark' : 'light');
   }, [dark]);
   const changeNamespace = (id: string) => {
     updateNamespace(id);
-    localStorage.setItem(namespaceKey, id);
+    writeStorage(namespaceSuffix, id);
   };
   const adminPage = (element: React.ReactNode) => session.globalAdmin ? element
     : <Result status="403" title="暂无访问权限" subTitle="请联系管理员分配权限" />;
@@ -165,10 +165,11 @@ export default function App() {
   useEffect(() => {
     document.title = runtime().name;
     const sync = () => setSession(readSession());
-    const syncStorage = (event: StorageEvent) => { if (event.key === SESSION_KEY) sync(); };
-    window.addEventListener(SESSION_EVENT, sync);
+    const syncStorage = (event: StorageEvent) => { if (event.key === storageKey('session.v1') || event.key === null) sync(); };
+    const eventName = sessionEvent();
+    window.addEventListener(eventName, sync);
     window.addEventListener('storage', syncStorage);
-    return () => { window.removeEventListener(SESSION_EVENT, sync); window.removeEventListener('storage', syncStorage); };
+    return () => { window.removeEventListener(eventName, sync); window.removeEventListener('storage', syncStorage); };
   }, []);
   return <HashRouter>{session ? <Shell key={session.mode + session.username} session={session} />
     : <Routes><Route path="/login" element={<Login />} /><Route path="*" element={<Navigate to="/login" replace />} /></Routes>}</HashRouter>;

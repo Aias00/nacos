@@ -52,6 +52,19 @@ records configuration, boundaries and environment requirements. Existing state,
 health, JSON API and SDK contracts remain unchanged. Static HTML presentation
 checks are outside the business API-surface totals below.
 
+## Optional Console exposure controls
+
+`ConsoleExposureITCase` strengthens the existing server-state row with default and
+minimal bootstrap-response expectations, query-boundary checks, configured auth-type
+preservation, and unchanged typed API validation. It also checks direct Legacy/shared
+asset blocking, optional packaged-notice visibility, and neutral generic framework
+404/405 responses against a separately configured server. `ConsolePresentationITCase`
+now accepts the explicit Legacy-disabled expectation while continuing to require Next.
+The [Console exposure matrix](CONSOLE_API_TEST_SCENARIOS.md#optional-console-exposure-controls)
+documents both deployment invocations, exact expectation properties, the notice-artifact
+selection requirement, and internal-fault/path/OIDC boundaries left to unit tests.
+No API operations are added and API-surface totals are unchanged.
+
 ## Maintenance Rules
 
 - Update the matching scenario document whenever an OpenAPI/AdminAPI/ConsoleAPI

@@ -73,6 +73,16 @@ class ConsoleRedirectControllerTest {
     }
     
     @Test
+    void testDisabledLegacyDefaultFallsBackToNext() throws Exception {
+        mockedEnvUtil.when(() -> EnvUtil.getProperty("nacos.console.ui.default", "next"))
+            .thenReturn("legacy");
+        mockedEnvUtil.when(() -> EnvUtil.getProperty("nacos.console.ui.legacy.enabled",
+            Boolean.class, true)).thenReturn(false);
+        mockMvc.perform(get("/")).andExpect(status().is3xxRedirection())
+            .andExpect(redirectedUrl("/next/"));
+    }
+    
+    @Test
     void testNextForwardsToIndexHtml() throws Exception {
         mockMvc.perform(get("/next/")).andExpect(status().isOk())
             .andExpect(forwardedUrl("/next/index.html"));

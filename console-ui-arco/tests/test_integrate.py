@@ -69,7 +69,19 @@ class IntegratedPackagingTest(unittest.TestCase):
                 runtime = console.read('static/next/runtime-config.js').decode()
                 self.assertIn('"enableDemo": false', runtime)
                 self.assertIn('"apiBase": "/management/"', runtime)
+                self.assertIn('"storagePrefix": "platform.console"', runtime)
+                self.assertNotIn('legacyStoragePrefix', runtime)
                 self.assertIn('测试平台', runtime)
+
+    def test_packages_only_explicit_storage_migration_settings(self):
+        self.server_fixture()
+        module.integrate(self.server, self.ui, self.output, storage_prefix='custom.console',
+                         legacy_storage_prefix='previous.console')
+        with zipfile.ZipFile(self.output) as boot:
+            with zipfile.ZipFile(io.BytesIO(boot.read('BOOT-INF/lib/nacos-console-3.3.0.jar'))) as console:
+                runtime = console.read('static/next/runtime-config.js').decode()
+                self.assertIn('"storagePrefix": "custom.console"', runtime)
+                self.assertIn('"legacyStoragePrefix": "previous.console"', runtime)
 
     def test_refuses_to_overwrite_input_or_existing_output(self):
         self.server_fixture()

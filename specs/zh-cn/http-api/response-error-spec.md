@@ -71,6 +71,10 @@ HTTP 状态、业务 `code`、摘要 `message` 和详情 `data`，包括 SDK 本
 与合并部署一致。纯文本、空响应和非标准错误响应继续使用普通 `NacosException`
 回退。本要求不改变重试、重新登录或节点切换策略。
 
+Console 可选的 `nacos.console.error.details.enabled=false` 仅控制通用框架异常回退，返回中性 Result
+JSON 及正确的 404/405/500 状态，详见 [Console 规范](../console/console-spec.md#52-可选-console-暴露控制)。
+该设置不改变 Server、SDK、类型化业务、参数校验、鉴权及远程 Admin 类型化错误契约。
+
 ## 4. ExceptionHandler 收敛
 
 Nacos 自有的 v3 HTTP API 应收敛到 `@NacosApi` 和

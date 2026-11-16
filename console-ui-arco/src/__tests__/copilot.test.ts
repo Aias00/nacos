@@ -15,15 +15,15 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { clearsCopilotKey, copilotApi, prepareCopilotUpdate, readCopilotConfig } from '../copilot-api';
-import { SESSION_KEY } from '../session';
+import { storageKey } from '../session';
 
 const storage = new Map<string, string>();
 const writes = vi.fn();
 beforeEach(() => {
   storage.clear(); writes.mockClear();
-  storage.set(SESSION_KEY, JSON.stringify({ mode: 'live', username: 'admin', accessToken: 'session-token', globalAdmin: true }));
   vi.stubGlobal('localStorage', { getItem: (key: string) => storage.get(key) || null, setItem: writes, removeItem: (key: string) => storage.delete(key) });
   vi.stubGlobal('window', { location: { origin: 'https://console.test' }, CONSOLE_CONFIG: { apiBase: '/gateway/console-api/' }, dispatchEvent: vi.fn() });
+  storage.set(storageKey('session.v1'), JSON.stringify({ mode: 'live', username: 'admin', accessToken: 'session-token', globalAdmin: true }));
   vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ code: 0, data: true }))));
 });
 const original = { apiKey: 'secret-api-key', model: 'qwen-turbo', studioUrl: 'https://studio.example.test/project', studioProject: 'Existing Studio Project' };
@@ -63,7 +63,7 @@ describe('Copilot API contract', () => {
     await expect(copilotApi.save(original)).rejects.toThrow('未保存成功');
   });
   it('round-trips the same supported configuration in explicit demo mode without network or persistent secrets', async () => {
-    storage.set(SESSION_KEY, JSON.stringify({ mode: 'demo', username: 'demo', accessToken: 'demo-only', globalAdmin: true }));
+    storage.set(storageKey('session.v1'), JSON.stringify({ mode: 'demo', username: 'demo', accessToken: 'demo-only', globalAdmin: true }));
     await copilotApi.save(original);
     expect(await copilotApi.get()).toEqual(original);
     expect(fetch).not.toHaveBeenCalled();

@@ -99,6 +99,11 @@ Bootstrap behavior:
 - `/v3/auth/user/admin` can create the first admin user when no global admin
   exists and the auth system is `NACOS`.
 
+Optional `nacos.console.server-state.minimal=true` projects public Console state into login/UI
+capabilities; see the [Console specification](../console/console-spec.md#52-optional-console-exposure-controls).
+The endpoint remains public; a token header alone never unlocks detailed state.
+Admin state and health probe contracts remain unchanged.
+
 ## 5. Plugin-Provided Auth APIs
 
 The `/v3/auth/*` API surface belongs to auth plugins. The

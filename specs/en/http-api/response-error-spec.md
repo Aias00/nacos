@@ -77,6 +77,12 @@ Plain-text, empty, or nonstandard error bodies retain the existing generic
 `NacosException` fallback. This requirement does not change retry, re-login, or
 server-selection policy.
 
+Optional `nacos.console.error.details.enabled=false` controls only the generic Console
+framework fallback, returning neutral Result JSON with appropriate HTTP 404/405/500 status.
+See the [Console specification](../console/console-spec.md#52-optional-console-exposure-controls).
+Server, SDK, typed business, validation, authentication and remote Admin typed error
+contracts remain unchanged.
+
 ## 4. Exception Handler Convergence
 
 Nacos-owned v3 HTTP APIs should converge on `@NacosApi` and

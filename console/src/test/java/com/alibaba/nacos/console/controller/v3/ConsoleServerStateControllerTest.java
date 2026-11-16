@@ -21,6 +21,7 @@ import com.alibaba.nacos.api.model.v2.ErrorCode;
 import com.alibaba.nacos.api.model.v2.Result;
 import com.alibaba.nacos.common.http.param.MediaType;
 import com.alibaba.nacos.console.proxy.ServerStateProxy;
+import com.alibaba.nacos.sys.env.EnvUtil;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,6 +31,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.mock.env.MockEnvironment;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
@@ -39,6 +41,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
@@ -58,9 +63,54 @@ public class ConsoleServerStateControllerTest {
     
     private MockMvc mockMvc;
     
+    private MockEnvironment environment;
+    
     @BeforeEach
     void setUp() {
+        environment = new MockEnvironment();
+        EnvUtil.setEnvironment(environment);
         mockMvc = MockMvcBuilders.standaloneSetup(consoleServerStateController).build();
+    }
+    
+    @Test
+    void testMinimalStateRetainsBootstrapWithoutChangingSource() throws Exception {
+        environment.setProperty("nacos.console.server-state.minimal", "true");
+        Map<String, String> source = new HashMap<>();
+        source.put("auth_enabled", "true");
+        source.put("auth_system_type", "nacos");
+        source.put("function_mode", null);
+        source.put("ai_enabled", "false");
+        source.put("version", "3.3.0");
+        source.put("server_port", "8848");
+        source.put("unknown_private_setting", "private");
+        when(serverStateProxy.getServerState()).thenReturn(source);
+        
+        Map<String, String> result = consoleServerStateController.serverState().getBody();
+        assertEquals("local", result.get("auth_system_type"));
+        assertEquals("true", result.get("auth_enabled"));
+        assertEquals("false", result.get("ai_enabled"));
+        assertNull(result.get("function_mode"));
+        assertFalse(result.containsKey("version"));
+        assertFalse(result.containsKey("server_port"));
+        assertFalse(result.containsKey("unknown_private_setting"));
+        assertEquals("nacos", source.get("auth_system_type"));
+        assertEquals("3.3.0", source.get("version"));
+        assertThrows(UnsupportedOperationException.class, () -> result.put("version", "test"));
+    }
+    
+    @Test
+    void testMinimalStatePreservesAuthenticationRoutingAndNullValues() throws Exception {
+        environment.setProperty("nacos.console.server-state.minimal", "true");
+        Map<String, String> source = new HashMap<>();
+        source.put("auth_system_type", "oidc");
+        source.put("login_page_enabled", "false");
+        when(serverStateProxy.getServerState()).thenReturn(source);
+        assertEquals(source, consoleServerStateController.serverState().getBody());
+        source.put("auth_system_type", null);
+        assertNull(consoleServerStateController.serverState().getBody().get("auth_system_type"));
+        source.put("auth_system_type", "custom-plugin");
+        assertEquals("custom-plugin",
+            consoleServerStateController.serverState().getBody().get("auth_system_type"));
     }
     
     @Test

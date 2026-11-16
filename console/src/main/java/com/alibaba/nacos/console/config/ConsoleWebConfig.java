@@ -17,12 +17,14 @@
 package com.alibaba.nacos.console.config;
 
 import com.alibaba.nacos.auth.config.NacosAuthConfigHolder;
-import com.alibaba.nacos.core.exception.NacosApiExceptionHandler;
+import com.alibaba.nacos.console.exception.ConsoleApiExceptionHandler;
 import com.alibaba.nacos.console.filter.NacosConsoleAuthFilter;
 import com.alibaba.nacos.console.filter.XssFilter;
+import com.alibaba.nacos.console.filter.ConsoleExposureFilter;
 import com.alibaba.nacos.core.code.ControllerMethodsCache;
 import com.alibaba.nacos.core.paramcheck.ParamCheckerFilter;
 import jakarta.annotation.PostConstruct;
+import jakarta.servlet.DispatcherType;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.jackson.autoconfigure.JsonMapperBuilderCustomizer;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
@@ -93,6 +95,17 @@ public class ConsoleWebConfig {
     }
     
     @Bean
+    public FilterRegistrationBean<ConsoleExposureFilter> consoleExposureFilterRegistration() {
+        FilterRegistrationBean<ConsoleExposureFilter> registration = new FilterRegistrationBean<>();
+        registration.setFilter(new ConsoleExposureFilter());
+        registration.addUrlPatterns("/*");
+        registration.setDispatcherTypes(DispatcherType.REQUEST, DispatcherType.FORWARD);
+        registration.setName("consoleExposureFilter");
+        registration.setOrder(5);
+        return registration;
+    }
+    
+    @Bean
     public FilterRegistrationBean<NacosConsoleAuthFilter> authFilterRegistration(
         NacosConsoleAuthFilter authFilter) {
         FilterRegistrationBean<NacosConsoleAuthFilter> registration =
@@ -142,7 +155,7 @@ public class ConsoleWebConfig {
     }
     
     @Bean
-    public NacosApiExceptionHandler nacosApiExceptionHandler() {
-        return new NacosApiExceptionHandler();
+    public ConsoleApiExceptionHandler nacosApiExceptionHandler() {
+        return new ConsoleApiExceptionHandler();
     }
 }

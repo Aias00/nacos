@@ -102,7 +102,7 @@ function CopilotEditor({ original, close, saved }: { original: CopilotConfig; cl
       <Collapse><Collapse.Item name="studio" header="AgentScope Studio 高级设置（可选）">
         <Typography.Paragraph type="secondary">未修改的高级设置会保留当前服务端值。</Typography.Paragraph>
         <Form.Item field="studioUrl" label="Studio URL" extra="留空表示不配置；非空时必须是 HTTP 或 HTTPS 地址。"><Input placeholder="https://studio.example.com" /></Form.Item>
-        <Form.Item field="studioProject" label="Studio 项目"><Input placeholder="NacosCopilot" /></Form.Item>
+        <Form.Item field="studioProject" label="Studio 项目"><Input placeholder="项目名称" /></Form.Item>
       </Collapse.Item></Collapse>
     </Form>
   </Drawer>;

@@ -220,6 +220,41 @@ public state fields, health probes, SDK/gRPC messages or cluster version metadat
 UI version hiding does not hide the version from public state APIs or remove
 all product-specific static resources and text.
 
+### 5.2 Optional Console exposure controls
+
+These settings are separate from branding, retain historical defaults, and take
+effect after configuring and restarting the Console instance:
+
+- `nacos.console.server-state.minimal=false`: when enabled, return only existing
+  `auth_enabled`, `auth_admin_request`, `login_page_enabled`, `console_ui_enabled`,
+  `console_ui_default`, `function_mode`, `ai_enabled`, `copilot_enabled` and
+  `auth_system_type` fields to every caller. Map built-in `nacos` to `local` for
+  display; retain OIDC and other selected types for login routing. Exclude version,
+  port, startup, storage, capacity and unknown fields. Do not mutate upstream state
+  or infer authentication from the presence of a token header.
+- `nacos.console.ui.legacy.enabled=true`: when disabled, return empty HTTP 404 for
+  Legacy and `/console-ui` entries and direct resources; a Legacy default falls
+  back to Next. Also block the bundled Legacy logos `/img/nacos.png` and
+  `/img/logo-2000-390.svg`, preserving custom image paths.
+- `nacos.console.ui.notices.enabled=true`: when disabled, deny HTTP downloads of UI
+  LICENSE, NOTICE and THIRD_PARTY_NOTICES.md, retaining legal notices in the release.
+- `nacos.console.error.details.enabled=true`: when disabled, generic Console missing
+  resource, unsupported method and unexpected errors return neutral Result JSON
+  with HTTP 404, 405 and 500. Logs retain the exception; typed business, validation,
+  authentication and remote Admin error contracts remain unchanged.
+
+Restrictions cover direct and forwarded requests, context paths and normalized
+equivalent paths. Next remains accessible. Server/Admin state, health probes,
+SDK ports and HTTP/gRPC contracts remain unchanged. Network source policy belongs
+to the deployment and must not trust unverified forwarded headers.
+
+Arco's neutral `storagePrefix` controls session, theme and account/mode-isolated
+namespace keys. Optional temporary `legacyStoragePrefix` migration gives current
+keys precedence, removes migrated keys and prevents logout from restoring an old
+session. Remove public migration settings after the upgrade window. Without
+migration, browser users sign in again; SDK credentials are unaffected. See the
+[deployment guide](../../../docs/console-exposure-hardening.md).
+
 ## 6. Handler And Proxy Boundary
 
 Console controllers must delegate through proxy and handler interfaces rather

@@ -81,6 +81,17 @@ AI 演示模式使用独立内存数据，支持示例资源和版本操作，�
 - `name`：平台名称。
 - `apiBase`：同源代理前缀，默认 `/platform-api/`。静态页面路径与 API 路径独立。
 - `enableDemo`：显示演示入口。正式部署可设为 `false`。
+- `storagePrefix`：浏览器会话、账号命名空间与主题的存储键前缀，默认 `platform.console`。
+- `legacyStoragePrefix`：可选的临时迁移来源前缀。升级时按需读取旧会话和偏好，写入新前缀后删除对应旧键；新键始终优先。
+
+从旧 Arco 版本升级时，可临时设置 `legacyStoragePrefix: 'nacos.arco'`，保留已有浏览器登录、
+账号空间与主题选择。旧前缀仅存在于运维显式提供的运行时配置，未内置到前端脚本。
+迁移窗口结束后移除此配置，避免继续公开旧前缀；尚未访问完成迁移的浏览器需要重新登录一次。
+未设置迁移来源时直接使用新前缀，已有浏览器需重新登录，SDK 凭据和客户端连接不受影响。
+更换 `storagePrefix` 同样需要按需指定旧前缀；不同前缀的控制台会话互相隔离。
+
+匿名状态、旧 UI/静态资源、公开 NOTICE 和通用错误详情的可选控制，以及部署时的端口来源限制，
+见 [Console 暴露控制](../docs/console-exposure-hardening.md)。这些设置需在部署时明确选择。
 
 配置文件只存放公开展示信息和代理路径。不要填写密码、token、服务端 identity 或签名密钥。
 此版支持 Nacos 默认用户名/密码认证及其 LDAP 适配，保持登录接口和 token 协议。
@@ -154,6 +165,8 @@ python3 -m unittest discover -s tests -p 'test_*.py'
 该 context path，并关闭演示入口。默认附带通用 favicon，可用 `--favicon` 指定自己的 SVG。
 脚本生成新的 JAR，不覆盖输入或已存在的输出；保留 Java 类、其他模块和 Legacy 页面，
 并检查嵌套 JAR 的存储格式及资源 CRC。它不读取服务器密码、签名密钥或业务数据。
+浏览器存储前缀可用 `--storage-prefix` 指定；升级迁移需显式传入 `--legacy-storage-prefix`。
+默认整合产物使用中性前缀，不包含迁移来源配置。
 
 发布时先备份现有 JAR、plugins、conf 和停机后的 data，再替换已验证的二进制产物。
 保留已有配置、数据目录和客户端端口；重启后分别等待 Server API、Console 和业务注册就绪。

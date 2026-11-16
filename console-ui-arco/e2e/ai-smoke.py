@@ -237,7 +237,7 @@ def run(base_url, output):
             # Separate mocked-live sessions never send a request to an actual Nacos server.
             for mode in ["disabled", "function-mode", "reader", "denied", "readonly"]:
                 live = browser.new_context(locale="zh-CN", viewport={"width": 1440, "height": 1100})
-                live.add_init_script("localStorage.setItem('nacos.arco.session.v1', JSON.stringify({mode:'live',accessToken:'browser-test-only',username:'reader',globalAdmin:" + ("false" if mode == "reader" else "true") + "}));")
+                live.add_init_script("localStorage.setItem('platform.console.session.v1', JSON.stringify({mode:'live',accessToken:'browser-test-only',username:'reader',globalAdmin:" + ("false" if mode == "reader" else "true") + "}));")
                 live_page = live.new_page()
                 live_page.on("pageerror", lambda error: errors.append(str(error)))
                 calls = []
@@ -274,7 +274,7 @@ def run(base_url, output):
                     assert not any("/copilot/" in path for path in calls)
                 elif mode == "denied":
                     expect(live_page.get_by_text("AI permission denied", exact=True)).to_be_visible()
-                    assert live_page.evaluate("localStorage.getItem('nacos.arco.session.v1')")
+                    assert live_page.evaluate("localStorage.getItem('platform.console.session.v1')")
                 else:
                     live_page.get_by_role("button", name="readonly-skill", exact=True).click()
                     drawer = live_page.locator(".arco-drawer").last

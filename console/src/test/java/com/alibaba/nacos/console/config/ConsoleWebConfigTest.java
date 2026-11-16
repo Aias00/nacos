@@ -17,8 +17,9 @@
 package com.alibaba.nacos.console.config;
 
 import com.alibaba.nacos.console.filter.NacosConsoleAuthFilter;
+import com.alibaba.nacos.console.filter.ConsoleExposureFilter;
 import com.alibaba.nacos.core.code.ControllerMethodsCache;
-import com.alibaba.nacos.core.exception.NacosApiExceptionHandler;
+import com.alibaba.nacos.console.exception.ConsoleApiExceptionHandler;
 import com.alibaba.nacos.core.paramcheck.ParamCheckerFilter;
 import com.alibaba.nacos.plugin.auth.constant.Constants;
 import com.alibaba.nacos.sys.env.EnvUtil;
@@ -62,6 +63,7 @@ class ConsoleWebConfigTest {
     void setUp() {
         cachedEnvironment = EnvUtil.getEnvironment();
         MockEnvironment environment = new MockEnvironment();
+        environment.setProperty(Constants.Auth.NACOS_CORE_AUTH_ENABLED, "false");
         environment.setProperty(Constants.Auth.NACOS_CORE_AUTH_ADMIN_ENABLED, "false");
         EnvUtil.setEnvironment(environment);
         consoleWebConfig = new ConsoleWebConfig(methodsCache);
@@ -97,6 +99,17 @@ class ConsoleWebConfigTest {
     @Test
     void xssFilter() {
         assertNotNull(consoleWebConfig.xssFilter());
+    }
+    
+    @Test
+    void consoleExposureFilterRegistration() {
+        FilterRegistrationBean<ConsoleExposureFilter> registration =
+            consoleWebConfig.consoleExposureFilterRegistration();
+        assertInstanceOf(ConsoleExposureFilter.class, registration.getFilter());
+        assertEquals("consoleExposureFilter", registration.getFilterName());
+        assertEquals(5, registration.getOrder());
+        assertEquals(1, registration.getUrlPatterns().size());
+        assertEquals("/*", registration.getUrlPatterns().iterator().next());
     }
     
     @Test
@@ -156,7 +169,7 @@ class ConsoleWebConfigTest {
     
     @Test
     void nacosApiExceptionHandler() {
-        assertInstanceOf(NacosApiExceptionHandler.class,
+        assertInstanceOf(ConsoleApiExceptionHandler.class,
             consoleWebConfig.nacosApiExceptionHandler());
     }
 }

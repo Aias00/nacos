@@ -19,7 +19,9 @@ export interface Session {
   username: string;
   globalAdmin: boolean;
 }
-export interface RuntimeConfig { name: string; apiBase: string; enableDemo: boolean }
+export interface RuntimeConfig {
+  name: string; apiBase: string; enableDemo: boolean; storagePrefix: string; legacyStoragePrefix?: string;
+}
 declare global { interface Window { CONSOLE_CONFIG?: Partial<RuntimeConfig> } }
 export interface Namespace {
   namespace: string; namespaceShowName: string; namespaceDesc?: string;

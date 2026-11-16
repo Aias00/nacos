@@ -176,6 +176,33 @@ context path 下选中的 Next/Legacy UI，避免旧资源入口绕过品牌设�
 这些配置不得改变 API 路由、鉴权、响应结构、公开状态字段、健康探针、SDK/gRPC 消息或集群版本元数据。
 隐藏 UI 版本标签不会隐藏公开状态 API 中的版本，也不会移除所有具有产品特征的静态资源和文案。
 
+### 5.2 可选 Console 暴露控制
+
+以下配置独立于品牌展示，默认保留原行为，配置后重启 Console 生效：
+
+- `nacos.console.server-state.minimal=false`：开启后为所有调用方投影已有登录和 UI 能力字段：
+  `auth_enabled`、`auth_admin_request`、`login_page_enabled`、`console_ui_enabled`、
+  `console_ui_default`、`function_mode`、`ai_enabled`、`copilot_enabled`、`auth_system_type`。
+  内置类型的展示值由 `nacos` 映射为 `local`，保留 OIDC 和其他选中类型以维持登录路由；不返回版本、
+  端口、启动、存储、容量或未知字段。不得修改上游 Map 或仅凭 token 请求头存在推断认证成功。
+- `nacos.console.ui.legacy.enabled=true`：关闭后，`/legacy` 和 `/console-ui` 入口及直接资源返回
+  空 HTTP 404，并关闭两个内置旧 Logo `/img/nacos.png`、`/img/logo-2000-390.svg`；
+  自定义图片路径保持可用，默认 UI 为 Legacy 时回退到 Next。
+- `nacos.console.ui.notices.enabled=true`：关闭后，拒绝 UI 目录下 LICENSE、NOTICE 和
+  THIRD_PARTY_NOTICES.md 的 HTTP 下载，发行包中的法律声明和版权信息必须保留。
+- `nacos.console.error.details.enabled=true`：关闭后，Console 通用未知资源、方法错误、未处理异常
+  分别返回 404、405、500 和中性 Result JSON；完整异常保留在服务端日志，类型化业务、参数校验及
+  鉴权错误保持原契约，不覆盖远程 Admin 类型化错误详情。
+
+路径限制覆盖直接请求、内部 forward、context path 和规范化后的等价路径。Next 保持可用；这些
+设置不改变 Server/Admin 状态、健康探针、客户端端口或 SDK/HTTP/gRPC 协议。网络来源访问策略由
+部署环境实施，不得将未经验证的 forwarded header 当作授权来源。
+
+Arco 的中性 `storagePrefix` 控制会话、主题和按账号/模式隔离的空间键。可临时配置
+`legacyStoragePrefix` 迁移旧数据，新键优先，迁移后删除旧键，退出不得恢复旧会话。迁移配置为公开
+信息，应在窗口结束后移除；不迁移时浏览器用户重新登录，SDK 凭据不受影响。
+详见 [部署与迁移说明](../../../docs/console-exposure-hardening.md)。
+
 ## 6. Handler 与 Proxy 边界
 
 Console Controller 必须通过 proxy 和 handler interface 进行委托，不应把 UI Controller 直接耦合到

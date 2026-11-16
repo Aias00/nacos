@@ -17,17 +17,17 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { customLabels, draftPayload, initialDraft, mcpClientConfigs, registries, registryVersionActions, mcpManagementResource } from '../ai-registries';
 import type { RegistryTarget } from '../ai-registries';
 import { pipelineState } from '../components/ai/pipeline';
-import { SESSION_KEY } from '../session';
+import { storageKey } from '../session';
 
 const storage = new Map<string, string>();
 const mcp: RegistryTarget = { kind: 'mcp', namespaceId: 'id +/中文', name: 'tools +/ops' };
 const agent: RegistryTarget = { ...mcp, kind: 'agent', name: 'agent +/one' };
 beforeEach(() => {
   storage.clear();
-  storage.set(SESSION_KEY, JSON.stringify({ mode: 'live', accessToken: 'test-token', username: 'operator', globalAdmin: false }));
   vi.stubGlobal('localStorage', { getItem: (key: string) => storage.get(key) || null,
     setItem: (key: string, value: string) => storage.set(key, value), removeItem: (key: string) => storage.delete(key) });
   vi.stubGlobal('window', { location: { origin: 'http://console.test' }, CONSOLE_CONFIG: { apiBase: '/console-api/' }, dispatchEvent: vi.fn() });
+  storage.set(storageKey('session.v1'), JSON.stringify({ mode: 'live', accessToken: 'test-token', username: 'operator', globalAdmin: false }));
   vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ code: 0, data: {} }))));
 });
 function sent(index = 0) {

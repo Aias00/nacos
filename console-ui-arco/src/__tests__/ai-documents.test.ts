@@ -16,14 +16,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { canForcePublishDocument, canSubmitDocument, customLabels, documentParams, documentsApi, parseResources, parseVariables } from '../ai-documents';
 import type { DocumentTarget } from '../ai-documents';
-import { SESSION_KEY } from '../session';
+import { storageKey } from '../session';
 
 const storage = new Map<string, string>();
 beforeEach(() => {
   storage.clear();
-  storage.set(SESSION_KEY, JSON.stringify({ mode: 'live', accessToken: 'token', username: 'operator', globalAdmin: false }));
   vi.stubGlobal('localStorage', { getItem: (key: string) => storage.get(key) || null, setItem: (key: string, value: string) => storage.set(key, value), removeItem: (key: string) => storage.delete(key) });
   vi.stubGlobal('window', { location: { origin: 'https://console.test' }, CONSOLE_CONFIG: { apiBase: '/console-api/' }, dispatchEvent: vi.fn() });
+  storage.set(storageKey('session.v1'), JSON.stringify({ mode: 'live', accessToken: 'token', username: 'operator', globalAdmin: false }));
   vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ code: 0, data: 'ok' }))));
 });
 const target: DocumentTarget = { kind: 'prompt', namespaceId: 'dev +/中文', name: 'support + assistant' };

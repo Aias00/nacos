@@ -132,7 +132,7 @@ export async function demoRequest<T>(path: string, p: Params = {}, method = 'GET
     instance.enabled = String(p.enabled) === 'true';
     result = 'ok';
   } else if (path.endsWith('/ns/service/subscribers')) {
-    result = page([{ ip: '10.0.0.21', port: 50836, appName: 'gateway', agent: 'Nacos-Java-Client:v2.2.3' }], p);
+    result = page([{ ip: '10.0.0.21', port: 50836, appName: 'gateway', agent: 'Java Client' }], p);
   } else if (path.endsWith('/core/cluster/nodes')) {
     result = [{ address: '127.0.0.1:8848', ip: '127.0.0.1', port: 8848, state: 'UP' }].filter((node) => node.ip.includes(String(p.keyword || '')));
   } else if (path.endsWith('/auth/user/list')) {

@@ -15,9 +15,6 @@
  */
 import type { RuntimeConfig, Session } from './types';
 
-export const SESSION_KEY = 'nacos.arco.session.v1';
-export const SESSION_EVENT = 'nacos-arco-session-change';
-
 function directPreview() {
   return runtime().enableDemo
     && new URLSearchParams(window.location.search || '').get('preview') === 'demo';
@@ -29,7 +26,37 @@ export function runtime(): RuntimeConfig {
     name: config.name || '服务治理平台',
     apiBase: (config.apiBase || '/platform-api/').replace(/\/?$/, '/'),
     enableDemo: config.enableDemo !== false,
+    storagePrefix: config.storagePrefix?.trim() || 'platform.console',
+    legacyStoragePrefix: config.legacyStoragePrefix?.trim() || undefined,
   };
+}
+
+export function storageKey(suffix: string) {
+  return `${runtime().storagePrefix}.${suffix}`;
+}
+
+export function sessionEvent() {
+  return `${runtime().storagePrefix}.session-change`;
+}
+
+export function readStorage(suffix: string): string | null {
+  const current = localStorage.getItem(storageKey(suffix));
+  const { legacyStoragePrefix, storagePrefix } = runtime();
+  if (current !== null || !legacyStoragePrefix || legacyStoragePrefix === storagePrefix) return current;
+  const previousKey = `${legacyStoragePrefix}.${suffix}`;
+  const previous = localStorage.getItem(previousKey);
+  if (previous !== null) {
+    localStorage.setItem(storageKey(suffix), previous);
+    localStorage.removeItem(previousKey);
+  }
+  return previous;
+}
+
+export function writeStorage(suffix: string, value: string | null) {
+  if (value === null) localStorage.removeItem(storageKey(suffix));
+  else localStorage.setItem(storageKey(suffix), value);
+  const { legacyStoragePrefix, storagePrefix } = runtime();
+  if (legacyStoragePrefix && legacyStoragePrefix !== storagePrefix) localStorage.removeItem(`${legacyStoragePrefix}.${suffix}`);
 }
 
 export function readSession(): Session | null {
@@ -37,7 +64,7 @@ export function readSession(): Session | null {
     return { mode: 'demo', accessToken: 'demo-only', username: 'demo', globalAdmin: true };
   }
   try {
-    const session: Session = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+    const session: Session = JSON.parse(readStorage('session.v1') || 'null');
     return session && (session.mode === 'live' || session.mode === 'demo')
       && typeof session.accessToken === 'string' && session.accessToken
       && typeof session.username === 'string' ? session : null;
@@ -49,10 +76,9 @@ export function writeSession(session: Session | null) {
     const url = new URL(window.location.href);
     url.searchParams.delete('preview');
     window.history.replaceState(null, '', url);
-    window.dispatchEvent(new Event(SESSION_EVENT));
+    window.dispatchEvent(new Event(sessionEvent()));
     return;
   }
-  if (session) localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-  else localStorage.removeItem(SESSION_KEY);
-  window.dispatchEvent(new Event(SESSION_EVENT));
+  writeStorage('session.v1', session ? JSON.stringify(session) : null);
+  window.dispatchEvent(new Event(sessionEvent()));
 }

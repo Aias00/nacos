@@ -23,7 +23,8 @@ import tempfile
 import zipfile
 
 
-def integrate(server_jar, ui_dist, output, context_path='/control', name='服务管理平台', favicon=None):
+def integrate(server_jar, ui_dist, output, context_path='/control', name='服务管理平台', favicon=None,
+              storage_prefix='platform.console', legacy_storage_prefix=None):
     server_jar, ui_dist, output = Path(server_jar).resolve(), Path(ui_dist).resolve(), Path(output).resolve()
     if output == server_jar or output.exists():
         raise FileExistsError('Choose a new output path; input and existing files are preserved')
@@ -36,9 +37,14 @@ def integrate(server_jar, ui_dist, output, context_path='/control', name='服务
             raise ValueError('UI assets must be regular files')
         if path.is_file():
             assets['static/next/' + path.relative_to(ui_dist).as_posix()] = path.read_bytes()
-    assets['static/next/runtime-config.js'] = ('window.CONSOLE_CONFIG = ' + json.dumps({
+    runtime = {
         'name': name, 'apiBase': context_path + '/', 'enableDemo': False,
-    }, ensure_ascii=False) + ';\n').encode('utf-8')
+        'storagePrefix': storage_prefix,
+    }
+    if legacy_storage_prefix:
+        runtime['legacyStoragePrefix'] = legacy_storage_prefix
+    assets['static/next/runtime-config.js'] = ('window.CONSOLE_CONFIG = '
+        + json.dumps(runtime, ensure_ascii=False) + ';\n').encode('utf-8')
     extra = {}
     if favicon is not None:
         extra['BOOT-INF/classes/static/branding/favicon.svg'] = Path(favicon).read_bytes()
@@ -100,6 +106,9 @@ if __name__ == '__main__':
     parser.add_argument('--output', required=True, type=Path)
     parser.add_argument('--context-path', default='/control')
     parser.add_argument('--name', default='服务管理平台')
+    parser.add_argument('--storage-prefix', default='platform.console')
+    parser.add_argument('--legacy-storage-prefix', help='Temporary browser-storage prefix to migrate on upgrade')
     parser.add_argument('--favicon', type=Path, default=Path(__file__).resolve().parents[1] / 'assets/console-favicon.svg')
     args = parser.parse_args()
-    print(json.dumps(integrate(args.server_jar, args.ui_dist, args.output, args.context_path, args.name, args.favicon), ensure_ascii=False))
+    print(json.dumps(integrate(args.server_jar, args.ui_dist, args.output, args.context_path, args.name,
+                               args.favicon, args.storage_prefix, args.legacy_storage_prefix), ensure_ascii=False))

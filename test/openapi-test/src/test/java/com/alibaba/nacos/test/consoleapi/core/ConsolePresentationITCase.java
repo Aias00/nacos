@@ -33,7 +33,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Standalone HTTP checks for Console presentation configuration.
  *
- * <p>Scenario coverage: existing directory and index entries remain anonymous HTML in both UIs;
+ * <p>Scenario coverage: enabled directory and index entries remain anonymous HTML in both UIs;
+ * disabled Legacy entries return empty HTTP 404 while Next remains available;
  * optional expected settings verify deployed branding without changing server configuration.
  * Missing/unsafe settings and HTML escaping are covered by focused Console unit tests.
  * The merged-only root hint check requires an explicitly selected deployment profile.
@@ -54,9 +55,16 @@ public class ConsolePresentationITCase extends ConsoleApiBaseITCase {
         String favicon = System.getProperty("nacos.test.brand.favicon", "");
         boolean showVersion = Boolean.parseBoolean(
             System.getProperty("nacos.test.brand.show-version", "true"));
+        boolean legacyEnabled = Boolean.parseBoolean(
+            System.getProperty("nacos.test.console.ui.legacy.enabled", "true"));
         for (String path : new String[] {"/next/", "/next/index.html", "/legacy/", "/legacy/index.html",
             "/console-ui/", "/console-ui/index.html"}) {
             HttpResponse response = getRaw(context + path, AuthIdentity.ANONYMOUS);
+            if (!legacyEnabled && !path.startsWith("/next/")) {
+                assertEquals(404, response.code(), path + ": " + response.body());
+                assertEquals("", response.body(), path);
+                continue;
+            }
             assertEquals(200, response.code(), path + ": " + response.body());
             assertTrue(response.body().contains("<title>"), path);
             assertTrue(response.body().contains("id=\"root\""), path);

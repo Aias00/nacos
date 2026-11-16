@@ -17,10 +17,12 @@
 package com.alibaba.nacos.console.exception;
 
 import com.alibaba.nacos.api.exception.runtime.NacosRuntimeException;
+import com.alibaba.nacos.api.model.v2.Result;
 import com.alibaba.nacos.plugin.auth.exception.AccessException;
 import com.alibaba.nacos.common.model.RestResultUtils;
 import com.alibaba.nacos.common.utils.ExceptionUtil;
 import com.alibaba.nacos.core.utils.Commons;
+import com.alibaba.nacos.sys.env.EnvUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -28,6 +30,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.util.HtmlUtils;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -64,6 +69,18 @@ public class ConsoleExceptionHandler {
     private ResponseEntity<Object> handleException(HttpServletRequest request, Exception e) {
         String uri = request.getRequestURI();
         LOGGER.error("CONSOLE {}", uri, e);
+        if (Boolean.FALSE.equals(EnvUtil.getProperty("nacos.console.error.details.enabled",
+            Boolean.class, true))) {
+            HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
+            if (e instanceof HttpRequestMethodNotSupportedException) {
+                status = HttpStatus.METHOD_NOT_ALLOWED;
+            } else if (e instanceof NoResourceFoundException
+                || e instanceof NoHandlerFoundException) {
+                status = HttpStatus.NOT_FOUND;
+            }
+            return ResponseEntity.status(status)
+                .body(new Result<>(status.value(), status.getReasonPhrase(), null));
+        }
         if (uri.contains(Commons.NACOS_SERVER_VERSION_V2)) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(RestResultUtils

@@ -25,6 +25,7 @@ import com.alibaba.nacos.api.model.v2.SupportedLanguage;
 import com.alibaba.nacos.console.paramcheck.ConsoleDefaultHttpParamExtractor;
 import com.alibaba.nacos.console.proxy.ServerStateProxy;
 import com.alibaba.nacos.core.paramcheck.ExtractorManager;
+import com.alibaba.nacos.sys.env.EnvUtil;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -32,6 +33,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 
 /**
  * Controller for managing server state-related operations.
@@ -43,6 +46,10 @@ import java.util.Map;
 @RequestMapping("/v3/console/server")
 @ExtractorManager.Extractor(httpExtractor = ConsoleDefaultHttpParamExtractor.class)
 public class ConsoleServerStateController {
+    
+    private static final String[] BOOTSTRAP_FIELDS = {"auth_enabled", "auth_admin_request",
+        "login_page_enabled", "console_ui_enabled", "console_ui_default", "function_mode",
+        "ai_enabled", "copilot_enabled", "auth_system_type"};
     
     private final ServerStateProxy serverStateProxy;
     
@@ -59,6 +66,19 @@ public class ConsoleServerStateController {
     @GetMapping("/state")
     public ResponseEntity<Map<String, String>> serverState() throws NacosException {
         Map<String, String> serverState = serverStateProxy.getServerState();
+        if (Boolean.TRUE.equals(EnvUtil.getProperty("nacos.console.server-state.minimal",
+            Boolean.class, false))) {
+            Map<String, String> bootstrap = new LinkedHashMap<>();
+            for (String field : BOOTSTRAP_FIELDS) {
+                if (serverState.containsKey(field)) {
+                    bootstrap.put(field, serverState.get(field));
+                }
+            }
+            if ("nacos".equalsIgnoreCase(bootstrap.get("auth_system_type"))) {
+                bootstrap.put("auth_system_type", "local");
+            }
+            serverState = Collections.unmodifiableMap(bootstrap);
+        }
         return ResponseEntity.ok().body(serverState);
     }
     

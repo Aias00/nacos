@@ -168,7 +168,7 @@ def run(base_url, output):
 
         # Mock live API errors to check permission handling and token expiration.
         live = browser.new_context(viewport={"width": 1440, "height": 1000})
-        live.add_init_script("localStorage.setItem('nacos.arco.session.v1', JSON.stringify({mode:'live',accessToken:'test-only',username:'reader',globalAdmin:false}));")
+        live.add_init_script("localStorage.setItem('platform.console.session.v1', JSON.stringify({mode:'live',accessToken:'test-only',username:'reader',globalAdmin:false}));")
         live_page = live.new_page()
         expired = False
 
@@ -184,14 +184,53 @@ def run(base_url, output):
         live_page.route("**/platform-api/**", mock_api)
         live_page.goto(base_url.rstrip("/") + "/#/configs")
         expect(live_page.get_by_text("authorization failed!", exact=True)).to_be_visible()
-        assert live_page.evaluate("localStorage.getItem('nacos.arco.session.v1')")
+        assert live_page.evaluate("localStorage.getItem('platform.console.session.v1')")
         expect(live_page.get_by_role("menuitem", name="权限管理", exact=True)).not_to_be_visible()
         expired = True
         live_page.get_by_role("button", name="刷新", exact=True).click()
         expect(live_page.get_by_role("button", name="登录", exact=True)).to_be_visible()
-        assert live_page.evaluate("localStorage.getItem('nacos.arco.session.v1')") is None
+        assert live_page.evaluate("localStorage.getItem('platform.console.session.v1')") is None
         checks.append("permission denial keeps session; expired token logs out")
         live.close()
+
+        # A custom prefix can adopt only the explicitly configured previous installation.
+        migration = browser.new_context(viewport={"width": 1440, "height": 1000})
+        migration.route("**/runtime-config.js", lambda route: route.fulfill(
+            content_type="application/javascript", body="window.CONSOLE_CONFIG = " + json.dumps({
+                "name": "测试平台", "apiBase": "/platform-api/", "enableDemo": True,
+                "storagePrefix": "custom.console", "legacyStoragePrefix": "previous.console",
+            }) + ";"))
+        migration.add_init_script("""
+          if (!localStorage.getItem('migration-fixture-seeded')) {
+            localStorage.setItem('migration-fixture-seeded', 'true');
+            localStorage.setItem('previous.console.session.v1', JSON.stringify({mode:'demo',accessToken:'demo-only',username:'old-user',globalAdmin:true}));
+            localStorage.setItem('previous.console.namespace.demo.old-user', 'test');
+            localStorage.setItem('previous.console.theme', 'dark');
+          }
+        """)
+        migrated = migration.new_page()
+        migrated.goto(base_url.rstrip("/") + "/#/configs")
+        migrated.wait_for_load_state("networkidle")
+        expect(migrated.get_by_role("button", name="old-user", exact=True)).to_be_visible()
+        expect(migrated.locator(".namespace-picker .arco-select-view")).to_contain_text("test")
+        expect(migrated.locator("body")).to_have_attribute("arco-theme", "dark")
+        values = migrated.evaluate("Object.fromEntries(Object.entries(localStorage))")
+        assert json.loads(values["custom.console.session.v1"])["username"] == "old-user"
+        assert values["custom.console.namespace.demo.old-user"] == "test"
+        assert values["custom.console.theme"] == "dark"
+        assert not any(key.startswith("previous.console.") for key in values)
+        checks.append("custom storage prefix migrates session, account namespace and theme")
+
+        other_tab = migration.new_page()
+        other_tab.goto(base_url.rstrip("/") + "/#/configs")
+        expect(other_tab.get_by_role("button", name="old-user", exact=True)).to_be_visible()
+        migrated.get_by_role("button", name="切换真实账号", exact=True).click()
+        expect(migrated.get_by_role("button", name="登录", exact=True)).to_be_visible()
+        expect(other_tab.get_by_role("button", name="登录", exact=True)).to_be_visible()
+        assert migrated.evaluate("localStorage.getItem('custom.console.session.v1')") is None
+        assert migrated.evaluate("localStorage.getItem('previous.console.session.v1')") is None
+        checks.append("custom-prefix logout synchronizes tabs without resurrecting old login")
+        migration.close()
         browser.close()
     report = {"passed": True, "checks": checks}
     (output / "result.json").write_text(json.dumps(report, ensure_ascii=False, indent=2))

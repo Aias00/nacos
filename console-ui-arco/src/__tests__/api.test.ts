@@ -15,7 +15,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { api, request, requestBlob, requestJson, requestUpload, updateInstanceAndWait } from '../api';
-import { readSession, SESSION_KEY, writeSession } from '../session';
+import { readSession, storageKey, writeSession } from '../session';
 import type { Config, Page } from '../types';
 
 const storage = new Map<string, string>();
@@ -33,7 +33,7 @@ beforeEach(() => {
   dispatch.mockClear();
 });
 function live() {
-  storage.set(SESSION_KEY, JSON.stringify({ mode: 'live', accessToken: 'test-token', username: 'operator', globalAdmin: false }));
+  storage.set(storageKey('session.v1'), JSON.stringify({ mode: 'live', accessToken: 'test-token', username: 'operator', globalAdmin: false }));
 }
 function respond(body: unknown, status = 200) {
   vi.mocked(fetch).mockResolvedValue(new Response(JSON.stringify(body), { status }));
@@ -199,7 +199,7 @@ describe('isolated demonstration data', () => {
     live();
     window.location.search = '?preview=demo';
     expect(readSession()?.mode).toBe('demo');
-    expect(JSON.parse(storage.get(SESSION_KEY)!).accessToken).toBe('test-token');
+    expect(JSON.parse(storage.get(storageKey('session.v1'))!).accessToken).toBe('test-token');
     expect(fetch).not.toHaveBeenCalled();
   });
   it('ignores preview links when demonstration is disabled', () => {
@@ -219,7 +219,7 @@ describe('isolated demonstration data', () => {
     expect(dispatch).toHaveBeenCalledOnce();
   });
   it('supports config CRUD, history and namespace isolation without any network requests', async () => {
-    storage.set(SESSION_KEY, JSON.stringify({ mode: 'demo', accessToken: 'demo-only', username: 'demo', globalAdmin: true }));
+    storage.set(storageKey('session.v1'), JSON.stringify({ mode: 'demo', accessToken: 'demo-only', username: 'demo', globalAdmin: true }));
     const target = { namespaceId: 'dev', dataId: 'arco-test.yaml', groupName: 'TEST_GROUP' };
     const config: Config = { ...target, content: 'enabled: true', type: 'yaml', appName: 'test', configTags: 'preserved' };
     expect(await api.publish(target, config)).toBe(true);

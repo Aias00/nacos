@@ -90,6 +90,10 @@ HTTP Filter、条件 Bean、插件激活策略和配置对象必须使用相同�
 - `/v3/auth/user/admin` 可以在不存在全局管理员，且鉴权系统为 `NACOS` 时
   创建第一个管理员用户。
 
+Console 可通过 `nacos.console.server-state.minimal=true` 将公开状态收敛为登录/UI 能力，详见
+[Console 规范](../console/console-spec.md#52-可选-console-暴露控制)。端点仍为公开端点，不得仅凭 token
+请求头存在就返回完整状态；Admin 状态和健康探针保持原契约。
+
 ## 5. 插件提供的 Auth API
 
 `/v3/auth/*` API 面属于鉴权插件。[Nacos 默认鉴权插件](../auth/default-auth-plugin-spec.md)
