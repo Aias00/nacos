@@ -104,6 +104,13 @@ capabilities; see the [Console specification](../console/console-spec.md#52-opti
 The endpoint remains public; a token header alone never unlocks detailed state.
 Admin state and health probe contracts remain unchanged.
 
+Deployments may separately disable full Console/Admin state through
+`nacos.console.server-state.enabled=false` and `nacos.server.admin-state.enabled=false`.
+Both default to enabled; disabled queries return empty HTTP 404 for anonymous and
+authenticated callers alike. Health probes and internal state services remain
+available. Native UI and independent Console/Maintainer state consumers must keep
+their required endpoint enabled.
+
 ## 5. Plugin-Provided Auth APIs
 
 The `/v3/auth/*` API surface belongs to auth plugins. The

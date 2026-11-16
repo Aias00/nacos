@@ -129,8 +129,11 @@ Arco 实例上下线操作必须等待同一资源身份的查询结果反映目
 切换命名空间使用 Namespace ID；配置发布与实例更新必须携带打开操作时对应的空间和资源身份。
 
 Arco 的 AI 管理页复用现有 MCP、Agent、Prompt、Skill 和 AgentSpec Console API，
-不新增 API 或改变客户端契约。AI 入口和直接路由要求有效 `ai_enabled=true`，且
-`function_mode` 未设置或为 `ai`；Copilot 配置入口要求 `copilot_enabled=true` 和全局管理员。
+不新增 API 或改变客户端契约。AI 和 Copilot 入口及直接路由分别由本地运行配置 `enableAi` 和
+`enableCopilot` 控制，默认均为 `false`，仅接受布尔 `true` 开启；Copilot 仍要求全局管理员身份。
+Arco 初始化仅查询命名空间，不读取 Console state、announcement、guide 或 `function_mode`；
+管理员身份来自登录响应。展示开关不授权业务操作，后端继续校验真实功能模式、开关与权限。
+以后开启 AI/Copilot 时需同时配置前端展示和后端功能开关。
 AI 编辑与确认操作保留打开时的 Namespace ID、资源和精确 Version；编辑期间锁定空间并保护未保存修改。
 写入口遵守 `writable=false`，服务端仍负责权限、可见性和生命周期校验。
 普通发布要求 `reviewed` 和当前 `APPROVED`；强制发布的管理界面入口仅允许全局管理员操作可写资源，
@@ -180,6 +183,9 @@ context path 下选中的 Next/Legacy UI，避免旧资源入口绕过品牌设�
 
 以下配置独立于品牌展示，默认保留原行为，配置后重启 Console 生效：
 
+- `nacos.console.server-state.enabled=true`：关闭时，精确 Console state 路径及规范化等价路径返回
+  空 HTTP 404，不进入状态处理器；guide、announcement、健康、认证和业务接口保持原行为。
+  关闭对匿名和已认证请求同样生效。原生 Next/Legacy 初始化仍依赖该接口，使用它们时必须保持开启。
 - `nacos.console.server-state.minimal=false`：开启后为所有调用方投影已有登录和 UI 能力字段：
   `auth_enabled`、`auth_admin_request`、`login_page_enabled`、`console_ui_enabled`、
   `console_ui_default`、`function_mode`、`ai_enabled`、`copilot_enabled`、`auth_system_type`。
@@ -195,8 +201,11 @@ context path 下选中的 Next/Legacy UI，避免旧资源入口绕过品牌设�
   鉴权错误保持原契约，不覆盖远程 Admin 类型化错误详情。
 
 路径限制覆盖直接请求、内部 forward、context path 和规范化后的等价路径。Next 保持可用；这些
-设置不改变 Server/Admin 状态、健康探针、客户端端口或 SDK/HTTP/gRPC 协议。网络来源访问策略由
+Console 设置不改变 Server/Admin 状态、健康探针、客户端端口或 SDK/HTTP/gRPC 协议。网络来源访问策略由
 部署环境实施，不得将未经验证的 forwarded header 当作授权来源。
+
+完整 Server/Admin 状态 HTTP 查询可独立通过 `nacos.server.admin-state.enabled=false` 关闭；它不影响
+合并部署中直接调用内部状态服务，也不关闭 liveness/readiness，规则见 [Core 运维规范](../core/core-operations-spec.md)。
 
 Arco 的中性 `storagePrefix` 控制会话、主题和按账号/模式隔离的空间键。可临时配置
 `legacyStoragePrefix` 迁移旧数据，新键优先，迁移后删除旧键，退出不得恢复旧会话。迁移配置为公开

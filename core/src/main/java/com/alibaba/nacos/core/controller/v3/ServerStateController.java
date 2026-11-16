@@ -23,6 +23,8 @@ import com.alibaba.nacos.api.model.v2.Result;
 import com.alibaba.nacos.core.cluster.health.ModuleHealthCheckerHolder;
 import com.alibaba.nacos.core.cluster.health.ReadinessResult;
 import com.alibaba.nacos.core.service.NacosServerStateService;
+import com.alibaba.nacos.sys.env.EnvUtil;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -54,8 +56,12 @@ public class ServerStateController {
      */
     @Since("3.0.0")
     @GetMapping()
-    public Result<Map<String, String>> serverState() {
-        return Result.success(stateService.getServerState());
+    public ResponseEntity<Result<Map<String, String>>> serverState() {
+        if (Boolean.FALSE.equals(EnvUtil.getProperty("nacos.server.admin-state.enabled",
+            Boolean.class, true))) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(Result.success(stateService.getServerState()));
     }
     
     /**

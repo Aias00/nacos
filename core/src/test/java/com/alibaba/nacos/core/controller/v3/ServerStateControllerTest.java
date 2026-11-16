@@ -20,6 +20,7 @@ import com.alibaba.nacos.api.model.v2.Result;
 import com.alibaba.nacos.core.cluster.health.ModuleHealthCheckerHolder;
 import com.alibaba.nacos.core.cluster.health.ReadinessResult;
 import com.alibaba.nacos.core.service.NacosServerStateService;
+import com.alibaba.nacos.sys.env.EnvUtil;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,12 +29,22 @@ import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpMethod;
+import org.springframework.core.env.ConfigurableEnvironment;
+import org.springframework.mock.env.MockEnvironment;
+import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.Collections;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
@@ -54,8 +65,15 @@ class ServerStateControllerTest {
     
     private ServerStateController serverStateController;
     
+    private MockEnvironment environment;
+    
+    private ConfigurableEnvironment originalEnvironment;
+    
     @BeforeEach
     void setUp() {
+        originalEnvironment = EnvUtil.getEnvironment();
+        environment = new MockEnvironment();
+        EnvUtil.setEnvironment(environment);
         serverStateController = new ServerStateController(stateService);
         holderMockedStatic = Mockito.mockStatic(ModuleHealthCheckerHolder.class);
         holderMockedStatic.when(ModuleHealthCheckerHolder::getInstance).thenReturn(holder);
@@ -66,6 +84,7 @@ class ServerStateControllerTest {
         if (holderMockedStatic != null) {
             holderMockedStatic.close();
         }
+        EnvUtil.setEnvironment(originalEnvironment);
     }
     
     @Test
@@ -73,11 +92,46 @@ class ServerStateControllerTest {
         Map<String, String> state = Collections.singletonMap("key", "value");
         when(stateService.getServerState()).thenReturn(state);
         
-        Result<Map<String, String>> result = serverStateController.serverState();
+        ResponseEntity<Result<Map<String, String>>> response = serverStateController.serverState();
+        assertEquals(200, response.getStatusCode().value());
+        Result<Map<String, String>> result = response.getBody();
         
         assertNotNull(result);
         assertEquals(0, result.getCode().intValue());
         assertEquals(state, result.getData());
+    }
+    
+    @Test
+    void testDisabledStateDoesNotReadInternalState() {
+        environment.setProperty("nacos.server.admin-state.enabled", "false");
+        ResponseEntity<Result<Map<String, String>>> response = serverStateController.serverState();
+        assertEquals(404, response.getStatusCode().value());
+        assertNull(response.getBody());
+        verifyNoInteractions(stateService);
+    }
+    
+    @Test
+    void testDisabledHttpStateCannotBeEnabledByRequest() throws Exception {
+        environment.setProperty("nacos.server.admin-state.enabled", "false");
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(serverStateController).build();
+        for (String method : new String[] {"GET", "HEAD"}) {
+            MockHttpServletResponse response = mvc.perform(MockMvcRequestBuilders.request(
+                HttpMethod.valueOf(method), "/v3/admin/core/state")
+                .queryParam("enabled", "true").header("Authorization", "Bearer ignored"))
+                .andReturn().getResponse();
+            assertEquals(404, response.getStatus());
+            assertEquals("", response.getContentAsString());
+        }
+        verifyNoInteractions(stateService);
+    }
+    
+    @Test
+    void testDisablingFullStatePreservesHealth() throws Exception {
+        environment.setProperty("nacos.server.admin-state.enabled", "false");
+        when(holder.checkReadiness()).thenReturn(new ReadinessResult(true, "OK"));
+        assertEquals("ok", serverStateController.liveness().getData());
+        assertEquals("ok", serverStateController.readiness().getData());
+        verifyNoInteractions(stateService);
     }
     
     @Test

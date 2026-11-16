@@ -21,6 +21,7 @@ import com.alibaba.nacos.api.model.v2.ErrorCode;
 import com.alibaba.nacos.api.model.v2.Result;
 import com.alibaba.nacos.common.http.param.MediaType;
 import com.alibaba.nacos.console.proxy.ServerStateProxy;
+import com.alibaba.nacos.console.filter.ConsoleExposureFilter;
 import com.alibaba.nacos.sys.env.EnvUtil;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -32,6 +33,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.mock.env.MockEnvironment;
+import org.springframework.http.HttpMethod;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
@@ -46,6 +48,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
 /**
  * ConsoleServerStateControllerTest.
@@ -69,7 +75,39 @@ public class ConsoleServerStateControllerTest {
     void setUp() {
         environment = new MockEnvironment();
         EnvUtil.setEnvironment(environment);
-        mockMvc = MockMvcBuilders.standaloneSetup(consoleServerStateController).build();
+        mockMvc = MockMvcBuilders.standaloneSetup(consoleServerStateController)
+            .addFilters(new ConsoleExposureFilter()).build();
+    }
+    
+    @Test
+    void disabledStateNeverInvokesTheProxyEvenWithIdentityHeaders() throws Exception {
+        environment.setProperty("nacos.console.server-state.enabled", "false");
+        for (HttpMethod method : new HttpMethod[] {HttpMethod.GET, HttpMethod.HEAD,
+            HttpMethod.POST}) {
+            for (String path : new String[] {"/v3/console/server/state",
+                "/v3/console/server/state/"}) {
+                mockMvc.perform(MockMvcRequestBuilders.request(method, "/control" + path)
+                    .contextPath("/control").queryParam("version", "requested")
+                    .header("Authorization", "Bearer test-identity")
+                    .header("accessToken", "test-identity"))
+                    .andExpect(status().isNotFound()).andExpect(content().string(""));
+            }
+        }
+        verifyNoInteractions(serverStateProxy);
+    }
+    
+    @Test
+    void disabledStatePreservesGuideAnnouncementAndTheirValidation() throws Exception {
+        environment.setProperty("nacos.console.server-state.enabled", "false");
+        when(serverStateProxy.getConsoleUiGuide()).thenReturn("guide");
+        when(serverStateProxy.getAnnouncement("zh-CN")).thenReturn("announcement");
+        mockMvc.perform(MockMvcRequestBuilders.get("/v3/console/server/guide"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.data").value("guide"));
+        mockMvc.perform(MockMvcRequestBuilders.get("/v3/console/server/announcement"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.data").value("announcement"));
+        mockMvc.perform(MockMvcRequestBuilders.get("/v3/console/server/announcement")
+            .queryParam("language", "fr-FR")).andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value(ErrorCode.SERVER_ERROR.getCode()));
     }
     
     @Test

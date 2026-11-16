@@ -17,5 +17,7 @@ window.CONSOLE_CONFIG = {
   name: '服务治理平台',
   apiBase: '/platform-api/',
   enableDemo: true,
+  enableAi: false,
+  enableCopilot: false,
   storagePrefix: 'platform.console',
 };

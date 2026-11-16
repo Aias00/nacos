@@ -13,7 +13,11 @@ AgentSpec 管理和 Copilot 配置。
 配置与 AI 内容编辑器使用本地打包的 Monaco，AI 状态展示复用共享 Tag 组件。
 AI 页面沿用官方 Card/Table/Form/Drawer/Modal/Tabs/Collapse，不增加自定义视觉系统。
 
-AI 入口同时检查服务端有效开关和直接路由条件；资源写操作遵守 `writable`，后端继续鉴权。
+控制台启动只加载命名空间，不依赖公开状态、guide 或 announcement 接口。身份与管理员标志来自
+登录响应，业务权限继续由后端校验。
+AI/Copilot 页面实现保留，真实与演示模式默认关闭；本地运行时 `enableAi`、`enableCopilot` 仅接受
+布尔值 `true` 开放菜单和直接路由，Copilot 仍要求全局管理员。这些开关只控制界面展示，部署者重新
+开放前必须确认后端能力与配置一致。资源写操作遵守 `writable`，后端继续鉴权。
 命名空间用 ID 隔离，编辑与确认操作保留打开时的资源身份；编辑时锁定空间，关闭未保存内容需要确认。
 审核结果以当前非历史 Pipeline 为准，`reviewed` 不等于审核通过；只有当前 `APPROVED` 可普通发布。
 管理界面的强制发布要求全局管理员、可写资源、`reviewing/reviewed` 和当前 `REJECTED`；

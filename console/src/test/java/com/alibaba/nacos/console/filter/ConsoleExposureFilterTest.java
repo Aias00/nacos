@@ -44,7 +44,30 @@ class ConsoleExposureFilterTest {
     @Test
     void defaultsRetainEveryUiAndNoticeRoute() throws Exception {
         for (String path : new String[] {"/legacy/", "/console-ui/public/js/loader.js",
-            "/next/NOTICE", "/next/LICENSE", "/next/THIRD_PARTY_NOTICES.md"}) {
+            "/next/NOTICE", "/next/LICENSE", "/next/THIRD_PARTY_NOTICES.md",
+            "/v3/console/server/state"}) {
+            check(path, true, DispatcherType.REQUEST);
+        }
+    }
+    
+    @Test
+    void disabledStateRejectsOnlyTheCanonicalStateEndpoint() throws Exception {
+        environment.setProperty("nacos.console.server-state.enabled", "false");
+        for (DispatcherType dispatcher : new DispatcherType[] {DispatcherType.REQUEST,
+            DispatcherType.FORWARD}) {
+            for (String path : new String[] {"/v3/console/server/state",
+                "/v3/console/server/state/", "/v3/console/server/state///",
+                "/v3/console/server/%73tate", "/v3/console/server/state%2f%2f",
+                "/v3//console/server/state", "/v3/console/server/./state",
+                "/v3/console/server/state;session=test"}) {
+                check(path, false, dispatcher);
+            }
+        }
+        for (String path : new String[] {"/v3/console/server/state-extra",
+            "/v3/console/server/state/child", "/v3/console/server/guide",
+            "/v3/console/server/announcement", "/v3/console/health/readiness",
+            "/v3/auth/user/login", "/v3/console/core/namespace/list",
+            "/v3/admin/core/state", "/next/index.html"}) {
             check(path, true, DispatcherType.REQUEST);
         }
     }

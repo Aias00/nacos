@@ -54,16 +54,32 @@ checks are outside the business API-surface totals below.
 
 ## Optional Console exposure controls
 
-`ConsoleExposureITCase` strengthens the existing server-state row with default and
-minimal bootstrap-response expectations, query-boundary checks, configured auth-type
-preservation, and unchanged typed API validation. It also checks direct Legacy/shared
+`ConsoleExposureITCase` and `ServerStateConsoleApiOpenApiITCase` strengthen the existing
+server-state row with default and minimal bootstrap-response expectations, optional empty-404
+state closure, query/trailing/encoded-path boundaries, configured auth-type preservation,
+and unchanged guide/announcement and typed API validation even when state is closed.
+Invalid identities are checked for the closed endpoint; the standard auth-enabled fixture
+also checks a valid administrator identity. It also checks direct Legacy/shared
 asset blocking, optional packaged-notice visibility, and neutral generic framework
 404/405 responses against a separately configured server. `ConsolePresentationITCase`
 now accepts the explicit Legacy-disabled expectation while continuing to require Next.
 The [Console exposure matrix](CONSOLE_API_TEST_SCENARIOS.md#optional-console-exposure-controls)
-documents both deployment invocations, exact expectation properties, the notice-artifact
-selection requirement, and internal-fault/path/OIDC boundaries left to unit tests.
+documents default, restricted state-on/minimal and restricted state-off profiles, exact
+expectation properties, the notice-artifact selection requirement, and internal-fault,
+filter short-circuit/path and OIDC boundaries left to unit tests.
 No API operations are added and API-surface totals are unchanged.
+
+## Optional full Server Admin state visibility
+
+`CoreStateAdminApiOpenApiITCase` accepts `nacos.test.server.admin-state.enabled=true`
+by default and verifies the existing wrapped module-state map and ignored query fields.
+Against a server configured with `nacos.server.admin-state.enabled=false`, set the
+expectation to `false`; only the exact full-state endpoint is expected to return empty
+HTTP 404 for plain/query requests. Liveness/readiness assertions always run and retain
+their existing success contract. The disabled profile can close both Console and full
+Admin state; neither setting closes Client APIs or health subpaths. The matching
+[Admin scenario row](ADMIN_API_TEST_SCENARIOS.md#core) records this optional boundary.
+No API operations or coverage totals are added.
 
 ## Maintenance Rules
 

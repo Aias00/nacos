@@ -34,6 +34,11 @@ def run(base_url, output):
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=True)
         context = browser.new_context(locale="zh-CN", viewport={"width": 1440, "height": 1100}, accept_downloads=True, permissions=["clipboard-read", "clipboard-write"])
+        context.route("**/runtime-config.js", lambda intercept: intercept.fulfill(
+            content_type="application/javascript", body="window.CONSOLE_CONFIG = " + json.dumps({
+                "name": "测试平台", "apiBase": "/platform-api/", "enableDemo": True,
+                "enableAi": True, "enableCopilot": True,
+            }) + ";"))
         page = context.new_page()
         page.set_default_timeout(12000)
         page.on("pageerror", lambda error: errors.append(str(error)))
@@ -235,8 +240,14 @@ def run(base_url, output):
             checks.append("demo makes zero API/network inference requests and has no browser runtime errors")
 
             # Separate mocked-live sessions never send a request to an actual Nacos server.
-            for mode in ["disabled", "function-mode", "reader", "denied", "readonly"]:
+            for mode in ["default", "disabled", "string-flags", "reader", "denied", "readonly"]:
                 live = browser.new_context(locale="zh-CN", viewport={"width": 1440, "height": 1100})
+                config = {"name": "测试平台", "apiBase": "/platform-api/", "enableDemo": False}
+                if mode != "default":
+                    value = False if mode == "disabled" else "true" if mode == "string-flags" else True
+                    config.update({"enableAi": value, "enableCopilot": value})
+                live.route("**/runtime-config.js", lambda intercept: intercept.fulfill(
+                    content_type="application/javascript", body="window.CONSOLE_CONFIG = " + json.dumps(config) + ";"))
                 live.add_init_script("localStorage.setItem('platform.console.session.v1', JSON.stringify({mode:'live',accessToken:'browser-test-only',username:'reader',globalAdmin:" + ("false" if mode == "reader" else "true") + "}));")
                 live_page = live.new_page()
                 live_page.on("pageerror", lambda error: errors.append(str(error)))
@@ -245,8 +256,8 @@ def run(base_url, output):
                 def mock_api(intercept):
                     path = intercept.request.url.split("?")[0]
                     calls.append(path)
-                    if path.endswith("/server/state"):
-                        intercept.fulfill(json={"version": "3.3.0", "ai_enabled": "false" if mode == "disabled" else "true", "copilot_enabled": "false" if mode == "disabled" else "true", "function_mode": "naming" if mode == "function-mode" else ""})
+                    if path.endswith(("/server/state", "/server/guide", "/server/announcement")):
+                        intercept.abort()
                     elif path.endswith("/namespace/list"):
                         intercept.fulfill(json={"code": 0, "data": [{"namespace": "dev", "namespaceShowName": "开发环境", "configCount": 0, "quota": 200, "type": 2}]})
                     elif mode == "denied":
@@ -264,7 +275,7 @@ def run(base_url, output):
                 target = "copilot" if mode == "reader" else "skills" if mode == "readonly" else "mcp"
                 live_page.goto(base_url.rstrip("/") + "/#/" + target)
                 live_page.wait_for_load_state("networkidle")
-                if mode in ["disabled", "function-mode"]:
+                if mode in ["default", "disabled", "string-flags"]:
                     expect(live_page.get_by_text("此功能尚未启用", exact=True)).to_be_visible()
                     expect(live_page.get_by_role("menuitem", name="MCP 服务", exact=True)).to_have_count(0)
                     assert not any("/ai/" in path for path in calls)
@@ -282,6 +293,7 @@ def run(base_url, output):
                     expect(drawer.get_by_role("button", name="下线版本", exact=True)).to_be_disabled()
                     expect(drawer.get_by_role("button", name="自定义版本标签", exact=True)).to_be_disabled()
                     assert not any(live_page.get_by_role("button", name="管理员强制发布", exact=True).all())
+                assert not any(path.endswith(("/server/state", "/server/guide", "/server/announcement")) for path in calls), calls
                 live_page.screenshot(path=str(output / f"live-{mode}.png"), full_page=True, animations="disabled")
                 checks.append(f"mock live {mode} gate")
                 live.close()

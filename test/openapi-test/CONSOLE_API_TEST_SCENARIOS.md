@@ -69,7 +69,7 @@ API layer and resource/version descriptors remain available for retry.
 | `HealthConsoleApiOpenApiITCase` | `GET /v3/console/health/liveness`<br>`GET /v3/console/health/readiness` | Covered | Verifies health endpoints return wrapped success bodies with `ok`; validates the console port/base path contract. These APIs have no request parameters, so boundary coverage is limited to response contract shape. |
 | `NamespaceConsoleApiOpenApiITCase` | `GET,PUT,POST,DELETE /v3/console/core/namespace`<br>`GET /v3/console/core/namespace/exist`<br>`GET /v3/console/core/namespace/list` | Covered | Creates, queries, updates, lists, checks existence, and deletes a namespace; validates missing required fields, invalid or overlong namespace IDs/names, duplicate create, and absent namespace behavior. Identity-only list/existence authorization is additionally exercised by `IdentityOnlyAuthorizationITCase` in merged and independent Console modes. |
 | `ClusterConsoleApiOpenApiITCase` | `GET /v3/console/core/cluster/nodes` | Covered | Verifies standalone cluster node list shape, node identity fields, and wrapped response contract. The endpoint has no request parameters in the swagger surface. |
-| `ServerStateConsoleApiOpenApiITCase`, `ConsoleExposureITCase` | `GET /v3/console/server/state`<br>`GET /v3/console/server/announcement`<br>`GET /v3/console/server/guide` | Covered | Verifies the default flat state map and optional minimal UI-bootstrap projection, ignored query fields, native-auth neutral naming while preserving configured OIDC/custom auth selection, and controlled announcement/guide responses under the optional `nacos.test.console.context-path`. The optional Console error-detail policy preserves typed announcement validation. These APIs do not mutate state. |
+| `ServerStateConsoleApiOpenApiITCase`, `ConsoleExposureITCase` | `GET /v3/console/server/state`<br>`GET /v3/console/server/announcement`<br>`GET /v3/console/server/guide` | Covered | Verifies the default flat state map, optional minimal UI-bootstrap projection, and optional state closure with empty 404 for canonical/query/single-trailing/encoded-name variants and invalid/available administrator identities. Noncanonical double separators can be rejected earlier with 400 without exposing state. Enabled-state checks retain ignored query fields and native-auth neutral naming while preserving configured OIDC/custom auth selection. Guide, announcement and typed announcement validation remain exercised when state is closed, under the optional `nacos.test.console.context-path`. These APIs do not mutate state. |
 | `PluginConsoleApiOpenApiITCase` | `GET /v3/console/plugin`<br>`GET /v3/console/plugin/list`<br>`GET /v3/console/plugin/availability`<br>`GET /v3/console/plugin/config`<br>`PUT /v3/console/plugin/config`<br>`PUT /v3/console/plugin/status` | Partial | Verifies enabled plugin availability values and node counts against the list entry, missing availability parameters and unknown-plugin errors, and plugin list/detail/availability response shapes, including `typeCritical`, `executionMode`, `exclusive`, and the `configValueMetas` map shape; verifies the built-in `auth:nacos`, `auth:ldap`, and `auth:oidc` definitions, legacy aliases, effect modes, effective values, source metadata, and secret metadata/masking; verifies a local-only runtime update and empty-map source clear through refreshed detail metadata; verifies that critical disable, exclusive runtime-switch, and OIDC restart-only updates are rejected; covers controlled validation/not-found errors and rejection of config updates for non-configurable plugins. Standalone IT covers local availability only; cross-node fan-out requires a cluster and is not exercised here. Core payload regression tests cover SPI registration and request/response serialization for both single-plugin and query-all probes (issue #15836). Persisted runtime mutation is not exercised to avoid carrying plugin state into later SDK suites. Anonymous AI access is not exercised by standalone OpenAPI IT; explicit credential presence, blank credential rejection, and HTTP 403 `ACCESS_DENIED` error mapping are covered by auth/core unit tests. Persisted full-map replacement/removal, key normalization, runtime/restart checks, same-source sensitive value preservation, persistence failure isolation, and retained-source apply failure/retry are covered by core and plugin unit tests. |
 
 ## Console presentation (outside API-surface totals)
@@ -104,12 +104,20 @@ These static-entry scenarios are not added to the business API totals.
 ### Optional Console exposure controls
 
 `ConsoleExposureITCase` exercises externally configured controls without writing server
-configuration or adding an in-process server. Run the same class against a default
-deployment and a separately restarted reduced-exposure deployment. Test properties
-describe the expected settings and must match that server:
+configuration or adding an in-process server. Run the same classes against these independently
+configured profiles; expectation properties must match the running server:
+
+| Profile | State enabled | Minimal state | Other exposure controls |
+| --- | --- | --- | --- |
+| Compatibility default | `true` | `false` | Legacy, notices and error details remain enabled. |
+| Restricted, state available | `true` | `true` | Legacy, notices and error details disabled; bootstrap projection remains available. |
+| Restricted, state closed | `false` | Either value, endpoint is closed first | Same restrictions; Arco is configured independently and no longer requires this endpoint. |
+
+Test properties describe the expected settings and must match that server:
 
 | Test expectation | Default | Scenarios |
 | --- | --- | --- |
+| `nacos.test.console.server-state.enabled` | `true` | Enabled state follows the full/minimal projection expectation below. Disabled canonical state returns an empty 404, including query, single trailing slash and encoded-name variants and unsupported methods. A double-separator path may be rejected with HTTP 400 by the container/StrictHttpFirewall before the Console filter, or reach the filter and receive empty 404; the 400 response must not contain version, auth type or state-payload fields. Anonymous/invalid identities are always checked; authenticated admin is also checked when the standard auth fixture is enabled. `ServerStateConsoleApiOpenApiITCase` continues to assert guide and announcement results rather than skipping their shared test. |
 | `nacos.test.console.server-state.minimal` | `false` | Default state contains version/port. Minimal state contains only the documented bootstrap fields, keeps login/feature flags, maps native auth to `local`, and ignores query attempts to select alternate state fields. |
 | `nacos.test.console.auth-system-type` | `nacos` | Expected configured auth selection; `oidc` and custom values remain unchanged in the minimal response. OIDC login routing and null/unknown state-field boundaries have focused Console unit coverage. |
 | `nacos.test.console.ui.legacy.enabled` | `true` | Enabled Legacy/historical entries, direct JS assets, and the exact old Logo URLs `/img/nacos.png` and `/img/logo-2000-390.svg` load; disabled entries and these direct assets return empty 404. Next entry remains covered by `ConsolePresentationITCase`; custom image paths remain outside this Legacy-only gate. |
@@ -121,9 +129,10 @@ Example targeted invocation after starting an Arco-integrated hardened server:
 
 ```bash
 mvn -pl test/openapi-test -Pintegration-test -DskipTests=false \
-  -Dit.test=ConsoleExposureITCase,ConsolePresentationITCase \
+  -Dit.test=ConsoleExposureITCase,ConsolePresentationITCase,ServerStateConsoleApiOpenApiITCase \
   -Dnacos.host=127.0.0.1 -Dnacos.port=18858 -Dnacos.console.port=18092 \
   -Dnacos.test.console.context-path=/control \
+  -Dnacos.test.console.server-state.enabled=true \
   -Dnacos.test.console.server-state.minimal=true \
   -Dnacos.test.console.ui.legacy.enabled=false \
   -Dnacos.test.console.ui.notices.enabled=false \
@@ -132,12 +141,22 @@ mvn -pl test/openapi-test -Pintegration-test -DskipTests=false \
 ```
 
 For the default deployment, use the same command with the minimal-state expectation
-`false` and the three enabled expectations `true`. Add the existing branding expectation
+`false` and all four enabled expectations `true`. For the restricted state-closed profile,
+restart the separately configured server with `nacos.console.server-state.enabled=false`
+and change the test expectation `nacos.test.console.server-state.enabled` to `false`;
+guide, announcement and typed validation checks still run. Add the existing branding expectation
 properties if that deployment configures branding. Console path normalization and malformed
-path handling, OIDC/bootstrap preservation, and a generic unexpected internal failure are
+path handling, filter short-circuiting before the state proxy, OIDC/bootstrap preservation,
+and a generic unexpected internal failure are
 covered by focused Console unit tests; standalone IT does not create an internal fault just
-to provoke HTTP 500. These controls do not change Server/Admin/SDK paths or response contracts;
-existing Core state/health and Java SDK suites remain the compatibility checks.
+to provoke HTTP 500. The Console controls do not change Server/Admin/SDK paths or response contracts.
+Direct-filter unit cases exercise normalized double separators and expect empty 404; a real
+HTTP request can instead receive an earlier container/firewall 400. The integration boundary
+permits that rejection only for the noncanonical path and checks that it contains no state
+data. Canonical, query, single-trailing and identity-header checks remain strictly empty 404.
+The separately configured full Admin state closure is covered by `CoreStateAdminApiOpenApiITCase`
+with `nacos.test.server.admin-state.enabled=false`; its liveness/readiness checks and the Java SDK
+suites remain active when both state endpoints are closed.
 
 ## Config
 

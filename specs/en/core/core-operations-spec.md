@@ -118,6 +118,15 @@ Rules:
   probes. Any public health surface must stay minimal and avoid sensitive state;
 - detailed server state is for diagnostics and console/maintainer operations.
 
+`nacos.server.admin-state.enabled` defaults to true. An explicit false makes only
+full `GET/HEAD /v3/admin/core/state` return empty HTTP 404 without querying the
+state aggregation service; request parameters or credentials cannot override it.
+Enabled deployments retain HTTP 200 and the Result-wrapped state map. Internal
+module state, cluster versions/membership, liveness, readiness and business APIs
+remain unchanged. Configure this consistently on target Server nodes. Merged
+Console reads state in-process; independent Console and Maintainer HTTP state
+consumers must keep the endpoint enabled or adapt their deployment.
+
 Server lifecycle, module state, and readiness foundations are defined by the
 [Server Lifecycle And Environment Configuration Spec](../design/foundation-server-lifecycle-env-spec.md)
 and the

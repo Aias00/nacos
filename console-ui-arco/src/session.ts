@@ -26,6 +26,8 @@ export function runtime(): RuntimeConfig {
     name: config.name || '服务治理平台',
     apiBase: (config.apiBase || '/platform-api/').replace(/\/?$/, '/'),
     enableDemo: config.enableDemo !== false,
+    enableAi: config.enableAi === true,
+    enableCopilot: config.enableCopilot === true,
     storagePrefix: config.storagePrefix?.trim() || 'platform.console',
     legacyStoragePrefix: config.legacyStoragePrefix?.trim() || undefined,
   };

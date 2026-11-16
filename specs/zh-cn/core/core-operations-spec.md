@@ -96,6 +96,13 @@ Server state 是运维诊断视图。它由已注册的 module state builder 聚
   暴露敏感状态；
 - 详细 server state 用于诊断、控制台和 maintainer 运维。
 
+`nacos.server.admin-state.enabled` 默认 `true`。显式设为 `false` 时，仅完整
+`GET/HEAD /v3/admin/core/state` 返回空 HTTP 404，并且不调用状态聚合服务；请求参数或凭据不能
+绕过该关闭设置。启用时保留原 HTTP 200 与 Result 状态 Map。内部模块状态服务、集群版本与成员
+元数据、liveness、readiness 和业务 API 均保持原行为。该设置应一致应用到目标 Server 节点。
+合并部署的 Console 在进程内读取状态；需要通过该 HTTP 端点读取状态的独立 Console 和
+Maintainer 客户端必须保持该端点开启或调整部署策略。
+
 服务端生命周期、module state 和 readiness 基础规则由
 [服务端生命周期与环境配置规范](../design/foundation-server-lifecycle-env-spec.md)和
 [可观测钩子规范](../design/foundation-observability-hooks-spec.md)定义。

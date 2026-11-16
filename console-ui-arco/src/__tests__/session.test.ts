@@ -31,6 +31,31 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllGlobals());
 
+describe('local feature display flags', () => {
+  it('keeps optional AI and Copilot pages closed by default in live and demo modes', () => {
+    expect(runtime()).toMatchObject({ enableAi: false, enableCopilot: false });
+    writeSession(account);
+    expect(runtime()).toMatchObject({ enableAi: false, enableCopilot: false });
+    window.location.search = '?preview=demo';
+    expect(readSession()?.mode).toBe('demo');
+    expect(runtime()).toMatchObject({ enableAi: false, enableCopilot: false });
+  });
+  it('requires explicit boolean true rather than truthy strings or numbers', () => {
+    for (const value of ['true', 'false', 'TRUE', 1, 0, null]) {
+      window.CONSOLE_CONFIG = JSON.parse(JSON.stringify({ enableAi: value, enableCopilot: value }));
+      expect(runtime()).toMatchObject({ enableAi: false, enableCopilot: false });
+    }
+    window.CONSOLE_CONFIG = { enableAi: true, enableCopilot: true };
+    expect(runtime()).toMatchObject({ enableAi: true, enableCopilot: true });
+  });
+  it('allows independent display flags without using server capability fields', () => {
+    window.CONSOLE_CONFIG = JSON.parse('{"enableAi":true,"ai_enabled":false,"copilot_enabled":true,"function_mode":"naming"}');
+    expect(runtime()).toMatchObject({ enableAi: true, enableCopilot: false });
+    window.CONSOLE_CONFIG = { enableCopilot: true };
+    expect(runtime()).toMatchObject({ enableAi: false, enableCopilot: true });
+  });
+});
+
 describe('configurable browser storage', () => {
   it('uses neutral defaults and keeps configured installations isolated', () => {
     expect(runtime().storagePrefix).toBe('platform.console');

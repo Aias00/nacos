@@ -30,7 +30,7 @@ npm run dev
 - 服务列表、集群/实例详情、实例上线/下线确认、订阅者查询。
 - 命名空间查询、新建、修改、空空间删除与切换。
 - 管理员集群节点查询，用户/角色/权限只读查询。
-- MCP、Agent、Prompt、Skill、AgentSpec 管理，以及平台级 Copilot 配置，详见下表。
+- 保留 MCP、Agent、Prompt、Skill、AgentSpec 管理和 Copilot 配置页面实现，默认关闭，详见下表。
 - Arco 官方浅色/深色主题、可折叠菜单、窄屏布局。
 
 配置回滚、配置导入导出、灰度发布、Naming 服务创建/删除、权限写入和 OIDC 单点登录
@@ -38,7 +38,8 @@ npm run dev
 
 ### AI 页面
 
-AI 页面直接使用现有 Console API，采用 Arco 官方组件和本地 Monaco 编辑器。
+AI 页面实现继续保留，真实与演示模式均默认关闭。显式开启后直接使用现有 Console API，
+采用 Arco 官方组件和本地 Monaco 编辑器。
 
 | 页面 | 已实现内容 |
 | --- | --- |
@@ -56,9 +57,10 @@ AI 页面直接使用现有 Console API，采用 Arco 官方组件和本地 Mona
 `historical=true` 的旧审核结果不授权发布；`reviewing` 遗留当前终态结果时，可重新提交以恢复审核流程。
 `latest` 标签由服务端维护，前端仅编辑自定义标签。
 
-入口遵循服务端状态：AI 资源要求 `ai_enabled=true`，且 `function_mode` 未设置或为 `ai`；
-Copilot 设置要求 `copilot_enabled=true` 和全局管理员身份。直接访问路由同样检查这些条件。
-部署配置对应 `nacos.extension.ai.enabled` 和 `nacos.copilot.enabled`，最终可用性仍由服务端决定。
+AI 入口由本地运行时配置 `enableAi: true` 显式开放；Copilot 设置由 `enableCopilot: true` 和
+登录结果中的全局管理员身份控制。直接访问路由同样检查这些条件，字符串 `"true"` 不会开启功能。
+这些是界面显示开关，不代表权限或服务端能力。重新开启前，部署者应同步确认服务端 AI/Copilot
+配置及适用的功能模式；最终可用性、可见性和权限仍由服务端校验。
 资源按 Namespace ID 隔离；打开编辑或确认操作时保留空间、资源与精确版本身份。
 编辑期间锁定命名空间，关闭未保存的编辑需要确认。`writable=false` 的资源不提供写操作；
 可见性、权限与生命周期冲突仍由后端校验。
@@ -81,6 +83,8 @@ AI 演示模式使用独立内存数据，支持示例资源和版本操作，�
 - `name`：平台名称。
 - `apiBase`：同源代理前缀，默认 `/platform-api/`。静态页面路径与 API 路径独立。
 - `enableDemo`：显示演示入口。正式部署可设为 `false`。
+- `enableAi`：显示 AI 资源页面；仅布尔值 `true` 开启，默认 `false`。
+- `enableCopilot`：向全局管理员显示 Copilot 设置；仅布尔值 `true` 开启，默认 `false`。
 - `storagePrefix`：浏览器会话、账号命名空间与主题的存储键前缀，默认 `platform.console`。
 - `legacyStoragePrefix`：可选的临时迁移来源前缀。升级时按需读取旧会话和偏好，写入新前缀后删除对应旧键；新键始终优先。
 
@@ -94,6 +98,8 @@ AI 演示模式使用独立内存数据，支持示例资源和版本操作，�
 见 [Console 暴露控制](../docs/console-exposure-hardening.md)。这些设置需在部署时明确选择。
 
 配置文件只存放公开展示信息和代理路径。不要填写密码、token、服务端 identity 或签名密钥。
+Arco 启动只加载命名空间，不请求服务端状态、guide 或 announcement；这些端点关闭、报错或连接失败
+不会阻断登录和基础页面。账号身份和管理员标志来自登录响应，实际业务请求继续由后端鉴权。
 此版支持 Nacos 默认用户名/密码认证及其 LDAP 适配，保持登录接口和 token 协议。
 现有服务器的 `nacos.console.ui.enabled` 保持开启。
 
@@ -167,6 +173,8 @@ python3 -m unittest discover -s tests -p 'test_*.py'
 并检查嵌套 JAR 的存储格式及资源 CRC。它不读取服务器密码、签名密钥或业务数据。
 浏览器存储前缀可用 `--storage-prefix` 指定；升级迁移需显式传入 `--legacy-storage-prefix`。
 默认整合产物使用中性前缀，不包含迁移来源配置。
+整合产物默认同时关闭 AI/Copilot 页面；确认后端能力已开启后，可分别用 `--enable-ai` 和
+`--enable-copilot` 显式开放对应界面。
 
 发布时先备份现有 JAR、plugins、conf 和停机后的 data，再替换已验证的二进制产物。
 保留已有配置、数据目录和客户端端口；重启后分别等待 Server API、Console 和业务注册就绪。

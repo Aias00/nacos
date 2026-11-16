@@ -30,7 +30,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <p>Scenario coverage:
  * <ul>
- *     <li>Expected capability: state returns the console server state map, guide returns the configured guide text,
+ *     <li>Expected capability: enabled state returns the console server state map, disabled state returns empty 404;
+ *     guide returns the configured guide text independently of state visibility,
  *     and announcement returns the language-specific announcement in the v3 {@code Result} envelope.</li>
  *     <li>Boundary/validation: omitted announcement language defaults to zh-CN, en-US is accepted, and unexpected
  *     query parameters on the state endpoint are ignored without changing the map response contract;
@@ -50,10 +51,15 @@ public class ServerStateConsoleApiOpenApiITCase extends CoreConsoleApiBaseITCase
     public void testServerStateGuideAndAnnouncement() throws Exception {
         HttpResponse stateResponse = getRaw(SERVER_PATH + "/state?unexpected=ignored",
                 AuthIdentity.ANONYMOUS);
-        assertEquals(200, stateResponse.code(), stateResponse.body());
-        JsonNode state = JacksonUtils.toObj(stateResponse.body());
-        assertTrue(state.isObject(), state.toString());
-        assertTrue(state.size() > 0, state.toString());
+        if (Boolean.parseBoolean(System.getProperty("nacos.test.console.server-state.enabled", "true"))) {
+            assertEquals(200, stateResponse.code(), stateResponse.body());
+            JsonNode state = JacksonUtils.toObj(stateResponse.body());
+            assertTrue(state.isObject(), state.toString());
+            assertTrue(state.size() > 0, state.toString());
+        } else {
+            assertEquals(404, stateResponse.code(), stateResponse.body());
+            assertEquals("", stateResponse.body());
+        }
 
         JsonNode guide = getJsonOk(SERVER_PATH + "/guide", Query.newInstance(),
                 AuthIdentity.ANONYMOUS);

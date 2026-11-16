@@ -1,8 +1,9 @@
 # Console exposure controls
 
 This branch builds on the complete Arco console. The changes are limited to the
-Console HTTP surface and browser storage names. Server, Admin and SDK routes,
-gRPC messages, authentication credentials and cluster membership remain compatible.
+Console HTTP surface and browser storage names, with a separate optional switch
+for full Server/Admin HTTP state. Defaults preserve existing consumers; SDK business
+routes, gRPC messages, authentication credentials and cluster membership remain compatible.
 They reduce public product identifiers; they do not make the underlying protocol
 unrecognizable to a caller that can reach and use it.
 
@@ -12,6 +13,8 @@ The defaults preserve existing deployments. Configure the following in the
 Console instance's `application.properties`, then restart that instance:
 
 ```properties
+nacos.console.server-state.enabled=false
+nacos.server.admin-state.enabled=false
 nacos.console.server-state.minimal=true
 nacos.console.ui.legacy.enabled=false
 nacos.console.ui.notices.enabled=false
@@ -20,18 +23,21 @@ nacos.console.error.details.enabled=false
 
 | Setting | Default | When changed |
 | --- | --- | --- |
+| `nacos.console.server-state.enabled` | `true` | When false, return empty HTTP 404 for Console state before invoking its handler. Native Next/Legacy still needs it; current Arco does not. |
+| `nacos.server.admin-state.enabled` | `true` | When false, return empty HTTP 404 for full Server/Admin state only. Keep health probes and internal state services; independent Console/Maintainer HTTP state consumers must keep it enabled. |
 | `nacos.console.server-state.minimal` | `false` | Return only login/UI capability fields from the public Console state endpoint. Exclude version, server port, startup mode, datasource and capacity details. Map the built-in auth display type to `local`; retain OIDC and other selected auth types for login routing. |
 | `nacos.console.ui.legacy.enabled` | `true` | Reject Legacy HTML and its direct `/console-ui` resources with empty HTTP 404. If Legacy was the default, `/` selects Next instead. |
 | `nacos.console.ui.notices.enabled` | `true` | Reject HTTP access to UI license/notice documents. Preserve these files and copyright notices in the distribution. |
 | `nacos.console.error.details.enabled` | `true` | Replace the Console's generic framework error fallback with neutral JSON errors. Typed business validation and authentication errors keep their existing contracts. |
 
-Minimal state still returns the flat JSON object used by current UIs. Its fields
+When Console state remains enabled, minimal mode returns a flat JSON object for
+native UI bootstrap. Its fields
 are `auth_enabled`, `auth_admin_request`, `login_page_enabled`,
 `console_ui_enabled`, `console_ui_default`, `function_mode`, `ai_enabled`,
 `copilot_enabled` and `auth_system_type`, when supplied by the server. The same
 projection applies to anonymous and logged-in requests; sending an arbitrary
-token header does not unlock detailed state. Core Admin state and health probes
-are unaffected. An OIDC provider name is retained because the login page needs
+token header does not unlock detailed state. The separate enabled switches take
+precedence over projection. Health probes are unaffected. OIDC is retained because the native login page needs
 it to choose the correct authentication flow.
 
 The Legacy and notice controls apply to direct resources as well as navigation
@@ -52,11 +58,20 @@ nacos.console.brand.show-version=false
 AI and Copilot availability remain controlled independently by
 `nacos.extension.ai.enabled` and `nacos.copilot.enabled`.
 
-Review the existing optional `console-guide.conf` and language-specific
-`announcement_*.conf` presentation files as well. Replace default product links
-with deployment-specific text, or remove/empty unused files. Their public APIs
+The distribution defaults for optional `console-guide.conf` and language-specific
+`announcement_*.conf` presentation files are empty in this branch. Operators may
+provide deployment-specific text, or leave unused files empty. Their public APIs
 continue to return the configured presentation content; the minimal-state switch
 does not rewrite operator announcements.
+
+Current Arco requests namespaces after login and does not call Console state,
+guide or announcement. AI/Copilot menus and direct routes use local runtime
+`enableAi` and `enableCopilot`, both false by default and enabled only by literal
+boolean true. Login remains responsible for session and administrator identity;
+the backend still enforces real capabilities, function mode and authorization.
+To use AI features later, enable the corresponding display flag and backend
+feature together. A closed state API does not prevent current Arco initialization;
+native UIs must retain their state endpoint.
 
 ## Browser identifiers
 
@@ -92,9 +107,10 @@ Keep application `serverAddr` values and the existing HTTP-to-gRPC port offset
 when preserving client configuration. Do not route gRPC through an ordinary
 HTTP location. If ports are remapped deliberately, provide the corresponding
 TCP/gRPC forwarding and validate each client version before switching traffic.
-The intentionally public Server Admin state and health interfaces keep their
-existing behavior. Restrict their port at the network boundary; Console response
-projection does not hide a directly reachable Server API.
+Server/Admin full state is disabled only when its dedicated switch is false.
+Health probes keep their existing behavior. Restrict the upstream port at the
+network boundary even when full state is disabled; trusted SDK/monitoring traffic
+still needs the relevant health and business interfaces.
 
 Example inside an existing Nginx HTTPS `server` block:
 
@@ -126,7 +142,8 @@ default and restricted server configurations; their scenario matrix is maintaine
 in `test/openapi-test/CONSOLE_API_TEST_SCENARIOS.md`. Arco checks cover browser
 storage migration, session expiry, demo isolation, and the existing page workflows.
 
-Verified on 2026-11-16 against an isolated standalone JVM deployment:
+The earlier source revision `306865d08` was verified on 2026-11-16 against an
+isolated standalone JVM deployment:
 
 - 40 focused Console Java tests; Spotless apply/check, Checkstyle, Apache RAT and
   SpotBugs passed.
@@ -150,7 +167,44 @@ No production firewall, service, configuration or data is modified by creating o
 checking out this branch. A deployment must explicitly select its settings and
 authorized application/cluster source networks.
 
-The same build subsequently passed an isolated three-node cluster regression,
+That earlier build subsequently passed an isolated three-node cluster regression,
 including leader loss, SDK reconnect/redo, recovery and eventual cleanup. See the
 [cluster validation record](console-hardening-cluster-validation.md) for the exact
 source/artifact, evidence scope and observed cleanup latency.
+
+### State-independent Arco and optional state endpoint closure
+
+The subsequent increment removes Arco state discovery and adds the two endpoint
+enabled switches. A fresh integrated artifact was verified with three isolated
+server configurations: compatibility defaults, minimal/restricted state, and both
+full state endpoints disabled. All ten external HTTP ITs passed in each profile
+(30 total), including notice boundaries, guide/announcement, typed validation and
+health probes. Duplicate separators rejected by the container may return 400;
+canonical closed state requests require empty 404.
+
+- 43 focused Console and nine Core tests passed, including default response
+  compatibility, disabled GET/HEAD without state-service calls and unchanged health.
+  Spotless, Checkstyle, Apache RAT and SpotBugs checks passed in the changed Java modules.
+- 117 frontend unit tests, four packaging tests, 19 base browser checks and
+  23 explicit-opt-in AI browser checks passed. State/guide/announcement were
+  exercised as unavailable mock endpoints with zero frontend requests.
+- A real authenticated browser with both state endpoints disabled completed login,
+  configuration/service/namespace navigation and AI route denial with seven API
+  requests, zero discovery requests and zero runtime errors. This focused check
+  does not fix or supersede the earlier Arco Table/history race.
+- Java 8 / SDK 2.2.3 passed configuration CRUD/listener, naming registration,
+  discovery/deregistration and server-status checks with default and closed-state
+  settings. Twelve real GET/HEAD checks with anonymous, invalid and admin identities
+  confirmed both closed endpoints return empty 404. Four Server/Console health
+  probes remained successful. Local test processes and data were removed afterward.
+
+The prior three-node record covers its pinned earlier source and artifact. This
+later HTTP-closure increment has the standalone/SDK evidence above; no additional
+three-node run is claimed for it.
+
+Separately, the three display files in the existing server installation were
+backed up and emptied at the user's request. Their public guide/announcement
+responses were verified empty without restarting the business service. The
+distribution defaults are also empty to avoid restoring product links on a fresh
+installation. This maintenance did not deploy the new JAR or close the business
+server's state endpoints; those switches require updating to this branch's artifact.

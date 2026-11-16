@@ -63,9 +63,7 @@ export async function demoRequest<T>(path: string, p: Params = {}, method = 'GET
   const matches = (config: { namespaceId: string; dataId: string; groupName: string }) =>
     config.namespaceId === namespace && config.dataId === p.dataId && config.groupName === p.groupName;
   let result: unknown;
-  if (path === 'v3/console/server/state') {
-    result = { version: '3.3.0', auth_enabled: true, console_ui_enabled: true, ai_enabled: true, copilot_enabled: true };
-  } else if (path.endsWith('/core/namespace/list')) {
+  if (path.endsWith('/core/namespace/list')) {
     result = namespaces.map((ns) => ({ ...ns, configCount: configs.filter((c) => c.namespaceId === ns.namespace).length }));
   } else if (path.endsWith('/core/namespace')) {
     if (method === 'POST') {

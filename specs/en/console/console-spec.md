@@ -159,9 +159,14 @@ Config publication and instance updates must preserve the namespace and resource
 identity associated with the opened operation.
 
 Arco AI management pages reuse the existing MCP, Agent, Prompt, Skill, and AgentSpec
-Console APIs without adding APIs or changing client contracts. AI menus and direct routes
-require effective `ai_enabled=true` and an absent/empty or `ai` `function_mode`; Copilot
-configuration requires `copilot_enabled=true` and a global administrator. AI editors and
+Console APIs without adding APIs or changing client contracts. Local runtime display
+flags `enableAi` and `enableCopilot` default to false and require literal boolean true
+to expose menus and direct routes; Copilot still requires a global administrator.
+Arco initializes from namespace queries only, without Console state, announcement,
+guide or `function_mode`. Administrator status comes from login. Display flags do not
+authorize operations; backend capabilities, function mode and permissions remain
+authoritative. Enabling these features later requires matching frontend and backend
+settings. AI editors and
 confirmations retain the opened Namespace ID, resource, and exact Version; editing locks
 namespace selection and protects unsaved changes. Write entries honor `writable=false`;
 the server remains responsible for authorization, visibility, and lifecycle validation.
@@ -225,6 +230,11 @@ all product-specific static resources and text.
 These settings are separate from branding, retain historical defaults, and take
 effect after configuring and restarting the Console instance:
 
+- `nacos.console.server-state.enabled=true`: when disabled, the exact Console state
+  path and normalized equivalents return empty HTTP 404 before invoking the state
+  handler, for anonymous and authenticated callers alike. Guide, announcement,
+  health, auth and business APIs remain available. Native Next/Legacy bootstrap
+  still requires this endpoint and must keep it enabled.
 - `nacos.console.server-state.minimal=false`: when enabled, return only existing
   `auth_enabled`, `auth_admin_request`, `login_page_enabled`, `console_ui_enabled`,
   `console_ui_default`, `function_mode`, `ai_enabled`, `copilot_enabled` and
@@ -245,8 +255,12 @@ effect after configuring and restarting the Console instance:
 
 Restrictions cover direct and forwarded requests, context paths and normalized
 equivalent paths. Next remains accessible. Server/Admin state, health probes,
-SDK ports and HTTP/gRPC contracts remain unchanged. Network source policy belongs
+SDK ports and HTTP/gRPC contracts remain unchanged by these Console settings. Network source policy belongs
 to the deployment and must not trust unverified forwarded headers.
+
+Full Server/Admin HTTP state can be disabled separately through
+`nacos.server.admin-state.enabled=false`; internal state services and health probes
+remain available, as defined in the [Core operations specification](../core/core-operations-spec.md).
 
 Arco's neutral `storagePrefix` controls session, theme and account/mode-isolated
 namespace keys. Optional temporary `legacyStoragePrefix` migration gives current

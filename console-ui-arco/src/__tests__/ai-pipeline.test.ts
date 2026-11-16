@@ -14,23 +14,7 @@
  * limitations under the License.
  */
 import { describe, expect, it } from 'vitest';
-import { aiFeatures } from '../ai-state';
 import { pipelineState } from '../components/ai/pipeline';
-
-describe('effective AI capabilities', () => {
-  it('keeps unavailable or unrecognized features closed', () => {
-    expect(aiFeatures()).toEqual({ ai: false, copilot: false });
-    expect(aiFeatures({ ai_enabled: 'false', copilot_enabled: 'false' })).toEqual({ ai: false, copilot: false });
-    expect(aiFeatures({ ai_enabled: 1, copilot_enabled: 'TRUE' })).toEqual({ ai: false, copilot: false });
-  });
-  it('respects function mode while allowing independent Copilot configuration', () => {
-    expect(aiFeatures({ ai_enabled: 'true', function_mode: 'ai', copilot_enabled: true })).toEqual({ ai: true, copilot: true });
-    expect(aiFeatures({ ai_enabled: true })).toEqual({ ai: true, copilot: false });
-    for (const function_mode of ['config', 'naming']) {
-      expect(aiFeatures({ ai_enabled: true, function_mode, copilot_enabled: 'true' })).toEqual({ ai: false, copilot: true });
-    }
-  });
-});
 
 describe('current review authority', () => {
   it('accepts current pipeline DTOs and serialized DTOs', () => {

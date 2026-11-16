@@ -24,7 +24,6 @@ import { readSession, readStorage, runtime, sessionEvent, storageKey, writeSessi
 import { useResource } from './useResource';
 import type { Namespace, Session } from './types';
 import Login from './Login';
-import { aiFeatures } from './ai-state';
 
 const Overview = lazy(() => import('./pages/Overview'));
 const Configs = lazy(() => import('./pages/Configs'));
@@ -53,13 +52,10 @@ function Shell({ session }: { session: Session }) {
   const [collapsed, setCollapsed] = useState(false);
   const [openMenus, setOpenMenus] = useState(['config', 'naming', 'ai', 'platform']);
   const [dark, setDark] = useState(readStorage('theme') === 'dark');
-  const loadNamespaces = useCallback(async (signal: AbortSignal) => {
-    const [namespaces, state] = await Promise.all([api.namespaces(signal), api.state(signal)]);
-    return { namespaces, state };
-  }, []);
+  const loadNamespaces = useCallback((signal: AbortSignal) => api.namespaces(signal), []);
   const namespaceResource = useResource(loadNamespaces);
-  const namespaces: Namespace[] = namespaceResource.data?.namespaces || [];
-  const features = aiFeatures(namespaceResource.data?.state);
+  const namespaces: Namespace[] = namespaceResource.data || [];
+  const { enableAi, enableCopilot } = runtime();
   const namespace = namespaces.some((item) => item.namespace === selectedNamespace)
     ? selectedNamespace : namespaces[0]?.namespace || 'public';
   const ready = !namespaceResource.loading;
@@ -77,8 +73,8 @@ function Shell({ session }: { session: Session }) {
   const adminPage = (element: React.ReactNode) => session.globalAdmin ? element
     : <Result status="403" title="暂无访问权限" subTitle="请联系管理员分配权限" />;
   const featurePage = (enabled: boolean, element: React.ReactNode) => enabled ? element
-    : <Result status="info" title="此功能尚未启用" subTitle="请联系管理员开启后刷新状态。"
-      extra={<Button onClick={namespaceResource.reload}>刷新状态</Button>} />;
+    : <Result status="info" title="此功能尚未启用" subTitle="请联系管理员确认此功能是否开放。"
+      extra={<Button onClick={() => window.location.reload()}>刷新页面</Button>} />;
   return <Context.Provider value={{ session, namespaces, namespace, setNamespace: changeNamespace,
     reloadNamespaces, dark, namespaceLocked, setNamespaceLocked }}>
     <Layout className="console-layout">
@@ -111,7 +107,7 @@ function Shell({ session }: { session: Session }) {
           <Menu.SubMenu key="naming" title={<><IconThunderbolt />服务管理</>}>
             <Menu.Item key="services">服务列表</Menu.Item><Menu.Item key="subscribers">订阅者查询</Menu.Item>
           </Menu.SubMenu>
-          {features.ai && <Menu.SubMenu key="ai" title={<><IconRobot />AI 资源管理</>}>
+          {enableAi && <Menu.SubMenu key="ai" title={<><IconRobot />AI 资源管理</>}>
             <Menu.Item key="mcp">MCP 服务</Menu.Item><Menu.Item key="agents">Agent 管理</Menu.Item>
             <Menu.Item key="skills">Skill 管理</Menu.Item><Menu.Item key="prompts">Prompt 管理</Menu.Item>
             <Menu.Item key="agentspecs">AgentSpec 管理</Menu.Item>
@@ -120,7 +116,7 @@ function Shell({ session }: { session: Session }) {
             <Menu.Item key="namespaces">命名空间</Menu.Item>
             {session.globalAdmin && <Menu.Item key="cluster">集群管理</Menu.Item>}
             {session.globalAdmin && <Menu.Item key="access">权限管理</Menu.Item>}
-            {session.globalAdmin && features.copilot && <Menu.Item key="copilot">Copilot 设置</Menu.Item>}
+            {session.globalAdmin && enableCopilot && <Menu.Item key="copilot">Copilot 设置</Menu.Item>}
           </Menu.SubMenu>
         </Menu>
         <Button type="text" className="sider-toggle" aria-label={collapsed ? '展开侧栏' : '收起侧栏'}
@@ -143,18 +139,18 @@ function Shell({ session }: { session: Session }) {
               <Route path="/namespaces" element={<Namespaces />} />
               <Route path="/cluster" element={adminPage(<Cluster />)} />
               <Route path="/access" element={adminPage(<Access />)} />
-              <Route path="/mcp" element={featurePage(features.ai, <Registries key={namespace + 'mcp'} kind="mcp" />)} />
-              <Route path="/agents" element={featurePage(features.ai, <Registries key={namespace + 'agent'} kind="agent" />)} />
-              <Route path="/skills" element={featurePage(features.ai, <Documents key={namespace + 'skill'} kind="skill" />)} />
-              <Route path="/prompts" element={featurePage(features.ai, <Documents key={namespace + 'prompt'} kind="prompt" />)} />
-              <Route path="/agentspecs" element={featurePage(features.ai, <Documents key={namespace + 'agentspec'} kind="agentspec" />)} />
-              <Route path="/copilot" element={adminPage(featurePage(features.copilot, <Copilot />))} />
+              <Route path="/mcp" element={featurePage(enableAi, <Registries key={namespace + 'mcp'} kind="mcp" />)} />
+              <Route path="/agents" element={featurePage(enableAi, <Registries key={namespace + 'agent'} kind="agent" />)} />
+              <Route path="/skills" element={featurePage(enableAi, <Documents key={namespace + 'skill'} kind="skill" />)} />
+              <Route path="/prompts" element={featurePage(enableAi, <Documents key={namespace + 'prompt'} kind="prompt" />)} />
+              <Route path="/agentspecs" element={featurePage(enableAi, <Documents key={namespace + 'agentspec'} kind="agentspec" />)} />
+              <Route path="/copilot" element={adminPage(featurePage(enableCopilot, <Copilot />))} />
               <Route path="/" element={<Navigate to="/overview" replace />} />
               <Route path="/login" element={<Navigate to="/overview" replace />} />
               <Route path="*" element={<Result status="404" title="页面不存在" extra={<Button onClick={() => navigate('/overview')}>返回工作台</Button>} />} />
             </Routes></Suspense>}
         </Layout.Content>
-        <Layout.Footer className="console-footer">{runtime().name} · 配置、服务与 AI 资源管理</Layout.Footer>
+        <Layout.Footer className="console-footer">{runtime().name} · {enableAi || enableCopilot ? '配置、服务与 AI 资源管理' : '配置与服务管理'}</Layout.Footer>
       </Layout>
     </Layout>
   </Context.Provider>;

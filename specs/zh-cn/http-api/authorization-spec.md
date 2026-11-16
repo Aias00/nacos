@@ -94,6 +94,10 @@ Console 可通过 `nacos.console.server-state.minimal=true` 将公开状态收�
 [Console 规范](../console/console-spec.md#52-可选-console-暴露控制)。端点仍为公开端点，不得仅凭 token
 请求头存在就返回完整状态；Admin 状态和健康探针保持原契约。
 
+部署可分别通过 `nacos.console.server-state.enabled=false` 和 `nacos.server.admin-state.enabled=false`
+关闭完整 Console/Admin 状态查询，返回空 HTTP 404，匿名和已认证请求一致；两者默认均开启。
+健康探针及内部状态服务不受影响。原生 UI 或独立 Console/Maintainer 状态查询必须保留相应端点。
+
 ## 5. 插件提供的 Auth API
 
 `/v3/auth/*` API 面属于鉴权插件。[Nacos 默认鉴权插件](../auth/default-auth-plugin-spec.md)

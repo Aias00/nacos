@@ -161,6 +161,13 @@ def run(base_url, output):
         screenshot("mobile.png")
         assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth"), "page overflow on mobile"
         checks.append("theme and responsive layout")
+        page.set_viewport_size({"width": 1440, "height": 1000})
+        for target in ["mcp", "agents", "skills", "prompts", "agentspecs", "copilot"]:
+            page.evaluate("target => location.hash = '/' + target", target)
+            expect(page.get_by_text("此功能尚未启用", exact=True)).to_be_visible()
+        expect(page.get_by_role("menuitem", name="MCP 服务", exact=True)).to_have_count(0)
+        expect(page.get_by_role("menuitem", name="Copilot 设置", exact=True)).to_have_count(0)
+        checks.append("demo AI and Copilot menus and direct routes are closed by default")
         assert api_requests == [], api_requests
         assert errors == [], errors
         checks.append("demo never calls real APIs; no browser errors")
@@ -174,8 +181,8 @@ def run(base_url, output):
 
         def mock_api(route):
             path = route.request.url.split("?")[0]
-            if path.endswith("/server/state"):
-                route.fulfill(json={"version": "3.3.0", "ai_enabled": False, "copilot_enabled": False})
+            if path.endswith(("/server/state", "/server/guide", "/server/announcement")):
+                route.abort()
             elif path.endswith("/namespace/list"):
                 route.fulfill(json={"code": 0, "data": [{"namespace": "dev", "namespaceShowName": "开发环境", "configCount": 0, "quota": 200, "type": 2}]})
             else:
@@ -192,6 +199,59 @@ def run(base_url, output):
         assert live_page.evaluate("localStorage.getItem('platform.console.session.v1')") is None
         checks.append("permission denial keeps session; expired token logs out")
         live.close()
+
+        # Login and ordinary pages work even when public discovery endpoints are unavailable.
+        for unavailable in [404, 500, "abort"]:
+            basic = browser.new_context(viewport={"width": 1440, "height": 1000})
+            basic_page = basic.new_page()
+            calls, basic_errors = [], []
+            basic_page.on("pageerror", lambda error: basic_errors.append(str(error)))
+
+            def basic_api(intercept):
+                path = intercept.request.url.split("?")[0]
+                calls.append(path)
+                if path.endswith(("/server/state", "/server/guide", "/server/announcement")):
+                    if unavailable == "abort": intercept.abort()
+                    else: intercept.fulfill(status=unavailable, json={"message": "unavailable"})
+                elif path.endswith("/v3/auth/user/login"):
+                    intercept.fulfill(json={"accessToken": "login-only-authority", "username": "operator", "globalAdmin": True})
+                elif path.endswith("/namespace/list"):
+                    intercept.fulfill(json={"code": 0, "data": [{"namespace": "dev", "namespaceShowName": "开发环境", "configCount": 1, "quota": 200, "type": 2}]})
+                elif path.endswith("/cs/config/list"):
+                    intercept.fulfill(json={"code": 0, "data": {"totalCount": 1, "pageItems": [{"dataId": "independent.yaml", "groupName": "DEFAULT_GROUP", "type": "yaml"}]}})
+                elif path.endswith("/ns/service/list"):
+                    intercept.fulfill(json={"code": 0, "data": {"totalCount": 1, "pageItems": [{"name": "independent-service", "groupName": "DEFAULT_GROUP", "clusterCount": 1, "ipCount": 1, "healthyInstanceCount": 1}]}})
+                elif path.endswith("/cluster/nodes"):
+                    intercept.fulfill(json={"code": 0, "data": [{"address": "127.0.0.1:8848", "ip": "127.0.0.1", "port": 8848, "state": "UP"}]})
+                else:
+                    intercept.fulfill(json={"code": 0, "data": {"totalCount": 0, "pageItems": []}})
+
+            basic_page.route("**/platform-api/**", basic_api)
+            basic_page.goto(base_url.rstrip("/") + "/#/login")
+            basic_page.get_by_placeholder("请输入用户名", exact=True).fill("operator")
+            basic_page.get_by_placeholder("请输入密码", exact=True).fill("browser-test-only")
+            basic_page.get_by_role("button", name="登录", exact=True).click()
+            expect(basic_page.get_by_text("independent.yaml", exact=True)).to_be_visible()
+            basic_page.get_by_role("menuitem", name="配置列表", exact=True).click()
+            expect(basic_page.get_by_role("button", name="independent.yaml", exact=True)).to_be_visible()
+            basic_page.get_by_role("menuitem", name="服务列表", exact=True).click()
+            expect(basic_page.get_by_role("button", name="independent-service", exact=True)).to_be_visible()
+            basic_page.get_by_role("menuitem", name="命名空间", exact=True).click()
+            expect(basic_page.get_by_role("row").filter(has_text="开发环境")).to_be_visible()
+            expect(basic_page.get_by_role("menuitem", name="集群管理", exact=True)).to_be_visible()
+            assert basic_page.evaluate("JSON.parse(localStorage.getItem('platform.console.session.v1')).globalAdmin") is True
+            for target in ["mcp", "agents", "skills", "prompts", "agentspecs", "copilot"]:
+                basic_page.evaluate("target => location.hash = '/' + target", target)
+                expect(basic_page.get_by_text("此功能尚未启用", exact=True)).to_be_visible()
+            basic_page.get_by_role("button", name="刷新页面", exact=True).click()
+            expect(basic_page.get_by_text("此功能尚未启用", exact=True)).to_be_visible()
+            expect(basic_page.get_by_role("menuitem", name="MCP 服务", exact=True)).to_have_count(0)
+            expect(basic_page.get_by_role("menuitem", name="Copilot 设置", exact=True)).to_have_count(0)
+            assert not any(path.endswith(("/server/state", "/server/guide", "/server/announcement")) for path in calls), calls
+            assert not any("/ai/" in path or "/copilot/" in path for path in calls), calls
+            assert not basic_errors, basic_errors
+            checks.append(f"live login/basic pages/default AI gates ignore discovery endpoints ({unavailable}); zero discovery requests")
+            basic.close()
 
         # A custom prefix can adopt only the explicitly configured previous installation.
         migration = browser.new_context(viewport={"width": 1440, "height": 1000})

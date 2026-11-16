@@ -111,7 +111,6 @@ const CORE = 'v3/console/core/';
 export const api = {
   login: (username: string, password: string) =>
     request<Pick<Session, 'accessToken' | 'globalAdmin' | 'username'>>('v3/auth/user/login', { username, password }, 'POST'),
-  state: (signal?: AbortSignal) => request<Record<string, string | boolean>>('v3/console/server/state', {}, 'GET', signal),
   namespaces: (signal?: AbortSignal) => request<Namespace[]>(CORE + 'namespace/list', {}, 'GET', signal),
   createNamespace: (values: Params) => request<boolean>(CORE + 'namespace', values, 'POST'),
   updateNamespace: (values: Params) => request<boolean>(CORE + 'namespace', values, 'PUT'),

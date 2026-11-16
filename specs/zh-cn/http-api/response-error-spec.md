@@ -45,6 +45,8 @@ V3 JSON 响应默认使用 `com.alibaba.nacos.api.model.v2.Result<T>`：
 - 默认鉴权 v1 和 v3 登录成功时返回遗留的平铺 token 对象，凭据错误时返回 HTTP 403
   和通用纯文本响应体。
 - 部分遗留或运维端点可以返回纯文本。只有在确认属于兼容行为后，才应保留。
+- 通过部署开关关闭的完整 Console/Admin 状态查询返回空 HTTP 404，规则分别见
+  [Console 规范](../console/console-spec.md)和 [Core 运维规范](../core/core-operations-spec.md)。
 
 ## 3. 错误处理
 

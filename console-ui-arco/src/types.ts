@@ -20,7 +20,8 @@ export interface Session {
   globalAdmin: boolean;
 }
 export interface RuntimeConfig {
-  name: string; apiBase: string; enableDemo: boolean; storagePrefix: string; legacyStoragePrefix?: string;
+  name: string; apiBase: string; enableDemo: boolean; enableAi: boolean; enableCopilot: boolean;
+  storagePrefix: string; legacyStoragePrefix?: string;
 }
 declare global { interface Window { CONSOLE_CONFIG?: Partial<RuntimeConfig> } }
 export interface Namespace {

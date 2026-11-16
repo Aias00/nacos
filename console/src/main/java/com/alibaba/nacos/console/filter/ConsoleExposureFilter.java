@@ -33,7 +33,7 @@ import java.util.Locale;
 import java.util.Set;
 
 /**
- * Optional Console-only restrictions on historical UI and distribution notice URLs.
+ * Optional Console-only restrictions on the state endpoint, historical UI and notice URLs.
  *
  * @author nacos
  */
@@ -52,13 +52,17 @@ public class ConsoleExposureFilter extends GenericFilterBean {
             "nacos.console.ui.legacy.enabled", Boolean.class, true));
         boolean noticesEnabled = !Boolean.FALSE.equals(EnvUtil.getProperty(
             "nacos.console.ui.notices.enabled", Boolean.class, true));
-        if (!legacyEnabled || !noticesEnabled) {
+        boolean stateEnabled = !Boolean.FALSE.equals(EnvUtil.getProperty(
+            "nacos.console.server-state.enabled", Boolean.class, true));
+        if (!legacyEnabled || !noticesEnabled || !stateEnabled) {
             String path = path((HttpServletRequest) request);
+            boolean state = "/v3/console/server/state".equals(path);
             boolean historical = under(path, "/legacy") || under(path, "/console-ui")
                 || LEGACY_IMAGES.contains(path);
             boolean notice = (historical || under(path, "/next"))
                 && NOTICES.contains(path.substring(path.lastIndexOf('/') + 1));
-            if ((!legacyEnabled && historical) || (!noticesEnabled && notice)) {
+            if ((!stateEnabled && state) || (!legacyEnabled && historical)
+                || (!noticesEnabled && notice)) {
                 ((HttpServletResponse) response).setStatus(HttpServletResponse.SC_NOT_FOUND);
                 return;
             }

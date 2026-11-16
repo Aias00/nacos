@@ -49,6 +49,10 @@ Current intentional response-shape exceptions:
 - Some legacy or operational endpoints may return plain text. These should be
   kept only when confirmed as compatibility behavior.
 
+Full Console/Admin state queries disabled by their deployment switches return
+empty HTTP 404, as defined by the [Console](../console/console-spec.md) and
+[Core operations](../core/core-operations-spec.md) specifications.
+
 ## 3. Error Handling
 
 Controllers annotated with `@NacosApi` use `NacosApiExceptionHandler` for common

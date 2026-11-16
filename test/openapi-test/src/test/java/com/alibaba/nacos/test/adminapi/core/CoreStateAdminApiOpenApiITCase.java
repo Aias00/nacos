@@ -28,7 +28,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <p>Scenario coverage:
  * <ul>
- *     <li>Expected capability: server state returns the deployed module-state map, liveness returns {@code ok}, and
+ *     <li>Expected capability: enabled server state returns the deployed module-state map, optional state closure
+ *     returns empty 404, liveness always returns {@code ok}, and
  *     readiness returns the standard v3 success envelope when the standalone server is ready.</li>
  *     <li>Boundary/validation: the endpoints expose no required request parameters; an unexpected query parameter is
  *     ignored by the state endpoint and must not change the response shape.</li>
@@ -42,15 +43,23 @@ public class CoreStateAdminApiOpenApiITCase extends CoreAdminApiBaseITCase {
 
     @Test
     public void testServerStateLivenessAndReadiness() throws Exception {
-        JsonNode state = getJsonOk(ADMIN_CORE_STATE_PATH, Query.newInstance(),
-                AuthIdentity.ANONYMOUS).get("data");
-        assertTrue(state.isObject(), state.toString());
-        assertTrue(state.size() > 0, state.toString());
+        if (Boolean.parseBoolean(System.getProperty("nacos.test.server.admin-state.enabled", "true"))) {
+            JsonNode state = getJsonOk(ADMIN_CORE_STATE_PATH, Query.newInstance(),
+                    AuthIdentity.ANONYMOUS).get("data");
+            assertTrue(state.isObject(), state.toString());
+            assertTrue(state.size() > 0, state.toString());
 
-        JsonNode stateWithUnexpectedQuery = getJsonOk(ADMIN_CORE_STATE_PATH,
-                Query.newInstance().addParam("unexpected", "ignored"),
-                AuthIdentity.ANONYMOUS).get("data");
-        assertTrue(stateWithUnexpectedQuery.isObject(), stateWithUnexpectedQuery.toString());
+            JsonNode stateWithUnexpectedQuery = getJsonOk(ADMIN_CORE_STATE_PATH,
+                    Query.newInstance().addParam("unexpected", "ignored"),
+                    AuthIdentity.ANONYMOUS).get("data");
+            assertTrue(stateWithUnexpectedQuery.isObject(), stateWithUnexpectedQuery.toString());
+        } else {
+            for (String query : new String[] {"", "?unexpected=ignored"}) {
+                HttpResponse response = getRaw(ADMIN_CORE_STATE_PATH + query, AuthIdentity.ANONYMOUS);
+                assertEquals(404, response.code(), response.body());
+                assertEquals("", response.body());
+            }
+        }
 
         JsonNode liveness = getJsonOk(ADMIN_CORE_STATE_PATH + "/liveness",
                 Query.newInstance(), AuthIdentity.ANONYMOUS);
