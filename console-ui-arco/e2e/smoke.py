@@ -174,7 +174,9 @@ def run(base_url, output):
 
         def mock_api(route):
             path = route.request.url.split("?")[0]
-            if path.endswith("/namespace/list"):
+            if path.endswith("/server/state"):
+                route.fulfill(json={"version": "3.3.0", "ai_enabled": False, "copilot_enabled": False})
+            elif path.endswith("/namespace/list"):
                 route.fulfill(json={"code": 0, "data": [{"namespace": "dev", "namespaceShowName": "开发环境", "configCount": 0, "quota": 200, "type": 2}]})
             else:
                 route.fulfill(status=200 if expired else 403, json={"code": 403, "message": "token expired!" if expired else "authorization failed!"})

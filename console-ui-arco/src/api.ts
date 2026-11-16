@@ -25,9 +25,20 @@ export function isExpired(status: number, message: string) {
   return status === 401 || /unknown user|user not found|token.*(invalid|expired|empty|required)|invalid.*token|expired.*token|invalid signature/i.test(message);
 }
 
-export async function request<T>(path: string, params: Params = {}, method = 'GET', signal?: AbortSignal): Promise<T> {
+interface RequestOptions {
+  body?: BodyInit;
+  contentType?: string;
+  timeoutMs?: number;
+  blob?: boolean;
+}
+
+export async function request<T>(path: string, params: Params = {}, method = 'GET', signal?: AbortSignal, options: RequestOptions = {}): Promise<T> {
   const session = readSession();
   if (session?.mode === 'demo') {
+    if (path.startsWith('v3/console/ai/') || path.startsWith('v3/console/copilot/')) {
+      const { demoAiRequest } = await import('./ai-demo');
+      return demoAiRequest<T>(path, params, method, options.body);
+    }
     const { demoRequest } = await import('./demo');
     return demoRequest<T>(path, params, method);
   }
@@ -42,19 +53,23 @@ export async function request<T>(path: string, params: Params = {}, method = 'GE
     headers.set('Authorization', `Bearer ${session.accessToken}`);
     headers.set('accessToken', session.accessToken);
   }
-  const isForm = method === 'POST' || method === 'PUT';
+  const isForm = (method === 'POST' || method === 'PUT') && options.body === undefined;
   if (!isForm) for (const [key, value] of values) url.searchParams.set(key, value);
   if (isForm) headers.set('Content-Type', 'application/x-www-form-urlencoded');
+  if (options.contentType) headers.set('Content-Type', options.contentType);
   const controller = new AbortController();
   const cancel = () => controller.abort();
   if (signal?.aborted) cancel();
   else signal?.addEventListener('abort', cancel, { once: true });
-  const timeout = setTimeout(cancel, 15000);
+  const timeout = setTimeout(cancel, options.timeoutMs || 15000);
   let response: Response;
-  let text: string;
+  let text = '';
+  let blob: Blob | undefined;
   try {
-    response = await fetch(url, { method, headers, body: isForm ? values : undefined, signal: controller.signal });
-    text = await response.text();
+    response = await fetch(url, { method, headers, body: options.body ?? (isForm ? values : undefined), signal: controller.signal });
+    if (options.blob && response.ok && (!response.headers.get('Content-Type')?.includes('application/json')
+      || response.headers.get('Content-Disposition')?.includes('attachment'))) blob = await response.blob();
+    else text = await response.text();
   } catch (error) {
     if (controller.signal.aborted && !signal?.aborted) throw new ApiError('请求超时，请检查服务连接后重试', 0);
     throw error;
@@ -62,6 +77,7 @@ export async function request<T>(path: string, params: Params = {}, method = 'GE
     clearTimeout(timeout);
     signal?.removeEventListener('abort', cancel);
   }
+  if (blob) return blob as T;
   let body: { code?: number; message?: string; data?: unknown };
   try { body = JSON.parse(text); }
   catch {
@@ -73,7 +89,20 @@ export async function request<T>(path: string, params: Params = {}, method = 'GE
     if (session && isExpired(response.status, message)) writeSession(null);
     throw new ApiError(message, response.status);
   }
+  if (options.blob) return new Blob([text], { type: response.headers.get('Content-Type') || 'application/octet-stream' }) as T;
   return (body.code === undefined ? body : body.data) as T;
+}
+
+export function requestJson<T>(path: string, body: unknown, method = 'POST', signal?: AbortSignal) {
+  return request<T>(path, {}, method, signal, { body: JSON.stringify(body), contentType: 'application/json' });
+}
+
+export function requestUpload<T>(path: string, body: FormData, timeoutMs = 60000) {
+  return request<T>(path, {}, 'POST', undefined, { body, timeoutMs });
+}
+
+export function requestBlob(path: string, params: Params = {}, signal?: AbortSignal) {
+  return request<Blob>(path, params, 'GET', signal, { blob: true, timeoutMs: 60000 });
 }
 
 const CS = 'v3/console/cs/';
@@ -82,7 +111,7 @@ const CORE = 'v3/console/core/';
 export const api = {
   login: (username: string, password: string) =>
     request<Pick<Session, 'accessToken' | 'globalAdmin' | 'username'>>('v3/auth/user/login', { username, password }, 'POST'),
-  state: () => request<Record<string, string | boolean>>('v3/console/server/state'),
+  state: (signal?: AbortSignal) => request<Record<string, string | boolean>>('v3/console/server/state', {}, 'GET', signal),
   namespaces: (signal?: AbortSignal) => request<Namespace[]>(CORE + 'namespace/list', {}, 'GET', signal),
   createNamespace: (values: Params) => request<boolean>(CORE + 'namespace', values, 'POST'),
   updateNamespace: (values: Params) => request<boolean>(CORE + 'namespace', values, 'PUT'),

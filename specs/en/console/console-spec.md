@@ -158,6 +158,25 @@ because an immediate query can still return metadata from before the update.
 Config publication and instance updates must preserve the namespace and resource
 identity associated with the opened operation.
 
+Arco AI management pages reuse the existing MCP, Agent, Prompt, Skill, and AgentSpec
+Console APIs without adding APIs or changing client contracts. AI menus and direct routes
+require effective `ai_enabled=true` and an absent/empty or `ai` `function_mode`; Copilot
+configuration requires `copilot_enabled=true` and a global administrator. AI editors and
+confirmations retain the opened Namespace ID, resource, and exact Version; editing locks
+namespace selection and protects unsaved changes. Write entries honor `writable=false`;
+the server remains responsible for authorization, visibility, and lifecycle validation.
+Normal publication requires `reviewed` and current `APPROVED`. The management UI exposes
+force publication only for a global administrator and a writable `reviewing/reviewed`
+Version with current `REJECTED` Pipeline results; historical results do not authorize it.
+A `reviewing` Version with a current terminal result can be submitted to recover review
+state. The server always manages `latest`. Skill upload prechecks a single-Skill ZIP,
+explicitly confirms draft replacement, and blocks batch or unknown results. AgentSpec
+editing replaces the complete manifest and resource map. The platform-level Copilot page
+configures only existing DashScope/Qwen and Studio fields through a JSON body, preserves
+unedited advanced values, masks the key, and confirms clearing it; it provides no model
+inference or automatic test calls. These pages use official Arco components. Demo data
+remains in browser memory, with ZIP uploads disabled and no model calls.
+
 In the Next UI, entering a sidebar group must expand it automatically. Users must
 still be able to collapse the active group, including the platform section,
 without changing the current page.

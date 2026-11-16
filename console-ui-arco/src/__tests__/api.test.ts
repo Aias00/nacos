@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { api, request, updateInstanceAndWait } from '../api';
+import { api, request, requestBlob, requestJson, requestUpload, updateInstanceAndWait } from '../api';
 import { readSession, SESSION_KEY, writeSession } from '../session';
 import type { Config, Page } from '../types';
 
@@ -40,6 +40,45 @@ function respond(body: unknown, status = 200) {
 }
 
 describe('Nacos console HTTP contract', () => {
+  it('sends AI cards as JSON without losing authentication or Unicode content', async () => {
+    live();
+    const card = { namespaceId: 'space+/中文', skillCard: { resources: { 'SKILL.md': '# 示例' } } };
+    await requestJson('v3/console/ai/skills/draft', card, 'PUT');
+    const [url, options] = vi.mocked(fetch).mock.calls[0];
+    expect(new URL(String(url)).searchParams.get('username')).toBe('operator');
+    expect(new Headers(options?.headers).get('Content-Type')).toBe('application/json');
+    expect(new Headers(options?.headers).get('Authorization')).toBe('Bearer test-token');
+    expect(JSON.parse(String(options?.body))).toEqual(card);
+    expect(options?.method).toBe('PUT');
+  });
+  it('lets the browser generate multipart boundaries for package upload', async () => {
+    live();
+    const form = new FormData();
+    form.set('namespaceId', 'isolated');
+    form.set('file', new Blob(['package']), 'skill.zip');
+    await requestUpload('v3/console/ai/skills/precheck', form);
+    const options = vi.mocked(fetch).mock.calls[0][1];
+    expect(options?.body).toBe(form);
+    expect(new Headers(options?.headers).has('Content-Type')).toBe(false);
+    expect(new Headers(options?.headers).get('accessToken')).toBe('test-token');
+  });
+  it('downloads attachment bytes intact and encodes the selected version', async () => {
+    live();
+    const bytes = new Uint8Array([80, 75, 3, 4, 255, 0]);
+    vi.mocked(fetch).mockResolvedValue(new Response(bytes, { headers: { 'Content-Type': 'application/zip', 'Content-Disposition': 'attachment; filename=skill.zip' } }));
+    const blob = await requestBlob('v3/console/ai/skills/download', { namespaceId: 'dev', skillName: 'a+b', version: '1.0.0' });
+    expect(new Uint8Array(await blob.arrayBuffer())).toEqual(bytes);
+    const query = new URL(String(vi.mocked(fetch).mock.calls[0][0])).searchParams;
+    expect(query.get('skillName')).toBe('a+b');
+    expect(query.get('version')).toBe('1.0.0');
+  });
+  it('treats download authorization errors as errors and expires the session', async () => {
+    live();
+    vi.mocked(fetch).mockResolvedValue(new Response(JSON.stringify({ code: 403, message: 'token expired!' }), { headers: { 'Content-Type': 'application/json' } }));
+    await expect(requestBlob('v3/console/ai/skills/download')).rejects.toThrow('token expired!');
+    expect(readSession()).toBeNull();
+    expect(dispatch).toHaveBeenCalledOnce();
+  });
   it('waits for instance metadata visibility before treating an accepted update as complete', async () => {
     live();
     vi.useFakeTimers();

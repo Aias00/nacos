@@ -128,6 +128,19 @@ Arco 实例上下线操作必须等待同一资源身份的查询结果反映目
 仍返回旧元数据时将过期状态保留在界面上。
 切换命名空间使用 Namespace ID；配置发布与实例更新必须携带打开操作时对应的空间和资源身份。
 
+Arco 的 AI 管理页复用现有 MCP、Agent、Prompt、Skill 和 AgentSpec Console API，
+不新增 API 或改变客户端契约。AI 入口和直接路由要求有效 `ai_enabled=true`，且
+`function_mode` 未设置或为 `ai`；Copilot 配置入口要求 `copilot_enabled=true` 和全局管理员。
+AI 编辑与确认操作保留打开时的 Namespace ID、资源和精确 Version；编辑期间锁定空间并保护未保存修改。
+写入口遵守 `writable=false`，服务端仍负责权限、可见性和生命周期校验。
+普通发布要求 `reviewed` 和当前 `APPROVED`；强制发布的管理界面入口仅允许全局管理员操作可写资源，
+且 Version 为 `reviewing/reviewed`、当前 Pipeline 为 `REJECTED`。历史结果不授权操作。
+`reviewing` 存有当前终态结果时可提交以恢复审核状态；`latest` 始终由服务端管理。
+Skill 上传界面先预检单 Skill ZIP，明确确认草稿覆盖并阻止批量或未知结果；AgentSpec 编辑整体替换
+manifest 和资源映射。Copilot 页只通过 JSON 正文配置既有 DashScope/Qwen 与 Studio 字段，
+保留未修改的高级值，遮蔽密钥并确认清空；它是平台设置，不提供模型推理或自动测试调用。
+这些页面继续使用 Arco 官方组件；演示数据仅存于浏览器内存，ZIP 上传禁用，不执行模型调用。
+
 Next UI 进入侧栏分组对应页面时必须自动展开该分组；用户仍必须能够手动折叠当前激活的分组，
 包括平台管理区域，且不得因此切换当前页面。
 
