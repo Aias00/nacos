@@ -92,4 +92,32 @@ location /platform-api/v3/auth/ {
 浏览器访问 `/platform/`；网关会继续转发 `Authorization` 和 `accessToken` 请求头。
 前端部署、切换或回退只涉及静态文件和 Nginx，无需重启 Nacos。SDK 的 8848/9848 接入保持原配置。
 
+## 与服务端整合打包
+
+整合模式将 Arco 静态资源放入现有 `next` 入口，使用同一 Console 的认证与管理接口。
+从仓库根目录构建服务端后，再构建并打包前端：
+
+```bash
+mvn -B '-Prelease-nacos,!dev' -Dmaven.test.skip=true clean install
+cd console-ui-arco
+npm ci
+npm run build
+python3 scripts/integrate.py \
+  --server-jar ../bootstrap/target/nacos-server.jar \
+  --output /tmp/nacos-server-arco.jar \
+  --context-path /control
+python3 -m unittest discover -s tests -p 'test_*.py'
+```
+
+`--context-path` 必须与服务器 `nacos.console.contextPath` 一致。整合产物会将 API 前缀设为
+该 context path，并关闭演示入口。默认附带通用 favicon，可用 `--favicon` 指定自己的 SVG。
+脚本生成新的 JAR，不覆盖输入或已存在的输出；保留 Java 类、其他模块和 Legacy 页面，
+并检查嵌套 JAR 的存储格式及资源 CRC。它不读取服务器密码、签名密钥或业务数据。
+
+发布时先备份现有 JAR、plugins、conf 和停机后的 data，再替换已验证的二进制产物。
+保留已有配置、数据目录和客户端端口；重启后分别等待 Server API、Console 和业务注册就绪。
+同版本代码回退优先恢复原 JAR/plugins，避免将运行中的业务数据回退到旧快照。
+
+已执行的功能与故障验证范围见 [验证记录](docs/validation.md)。
+
 设计约束见 [DESIGN.md](DESIGN.md)，上游来源见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
