@@ -149,3 +149,8 @@ Verified on 2026-11-16 against an isolated standalone JVM deployment:
 No production firewall, service, configuration or data is modified by creating or
 checking out this branch. A deployment must explicitly select its settings and
 authorized application/cluster source networks.
+
+The same build subsequently passed an isolated three-node cluster regression,
+including leader loss, SDK reconnect/redo, recovery and eventual cleanup. See the
+[cluster validation record](console-hardening-cluster-validation.md) for the exact
+source/artifact, evidence scope and observed cleanup latency.
