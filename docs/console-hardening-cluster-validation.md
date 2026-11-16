@@ -58,7 +58,7 @@ SDK 最终标记为 `java8-sdk223-three-node-cluster-ok`。完整自动周期约
 ## 验证边界
 
 - 同机三个进程不能证明跨主机容灾、网络分区、机器掉电或容量表现。
-- MySQL 为一个独立测试实例，未验证数据库高可用。
+- 三个节点共用单个现有 MySQL 实例中的独立测试库和账号，未验证数据库高可用。
 - 持久实例使用 v3 Admin API 验证；没有将 SDK 2.2.3 的旧 HTTP 持久注册路径声明为已验证。
 - 未验证 Console 负载均衡器自动切换。前端既有 Arco Table 滚动异常仍按
   [单机验证记录](console-exposure-hardening.md#validation)保留，不属于本次集群回归的修复范围。
