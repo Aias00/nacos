@@ -93,7 +93,7 @@ export default function Configs() {
       } });
   }
   return <div className="page-stack">
-    <div className="page-heading"><Typography.Title heading={4}>配置列表</Typography.Title><Tag>Namespace · {namespace || 'public'}</Tag></div>
+    <div className="page-heading" style={{ justifyContent: 'flex-end' }}><Tag>Namespace · {namespace || 'public'}</Tag></div>
     <Card bordered={false}><Form id="config-filter" form={filter} layout="inline" className="filter-form" onSubmit={(values) => { setPagination({ ...pagination, current: 1 }); setQuery({ dataId: values.dataId || '', groupName: values.groupName || '' }); }}>
       <Form.Item label="Data ID" field="dataId"><Input allowClear placeholder="搜索 Data ID" style={{ width: 250 }} /></Form.Item>
       <Form.Item label="Group" field="groupName"><Input allowClear placeholder="搜索 Group" style={{ width: 220 }} /></Form.Item>
