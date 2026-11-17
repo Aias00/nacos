@@ -64,6 +64,7 @@ function Shell({ session }: { session: Session }) {
   const reloadNamespaces = useCallback(async () => { refreshNamespaces(); }, [refreshNamespaces]);
   useEffect(() => {
     document.body.setAttribute('arco-theme', dark ? 'dark' : 'light');
+    document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
     writeStorage('theme', dark ? 'dark' : 'light');
   }, [dark]);
   const changeNamespace = (id: string) => {

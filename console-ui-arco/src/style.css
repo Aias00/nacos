@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 /* Arco Pro layout spacing; component appearance comes from the official theme. */
-body { margin: 0; background: var(--color-fill-2); color: var(--color-text-1); }
+:root { color-scheme: light dark; }
+body { margin: 0; background: var(--color-bg-1); color: var(--color-text-1); }
 .console-layout { min-height: 100vh; }
 .console-navbar { height: 60px; position: fixed; inset: 0 0 auto; z-index: 100;
   display: flex; align-items: center; justify-content: space-between; padding: 0 20px;
