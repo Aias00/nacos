@@ -16,6 +16,20 @@
 
 # Admin API IT Scenario Index
 
+Config HTTP namespace resolution is additionally verified by
+`ConfigNamespaceResolutionOpenApiITCase` and the existing Config functional ITs.
+The [namespace scenario matrix](CONFIG_NAMESPACE_API_TEST_SCENARIOS.md) records
+the affected operations, parser/Controller fields, defaults, binding boundaries,
+clone source READ / target WRITE checks, and compatibility scope. These scenarios
+strengthen existing surface rows; classifications and coverage totals are unchanged.
+
+Card-level A2A security requirements (#15975, item 1) extend the existing A2A
+Admin surface without changing coverage totals:
+
+| API surface / IT class | Covered API operations | Current status | Current/missing coverage |
+| --- | --- | --- | --- |
+| A2A Card security requirements / `A2aAdminApiOpenApiITCase` | POST and GET `/v3/admin/ai/a2a` | Covered | Standard and historical flat import; standard output plus synchronized 0.3 `security`; old-field-only input, new-field precedence on conflicts, empty lists, anonymous alternatives, absent fields, and malformed requirement HTTP 400. Dedicated AUTO/SYNCING migration IT verifies that historical flat reads return standard requirements without changing stored data. Standard parsing precedes the compatibility retry; malformed data remains an error. No read repair is scheduled. Skill-level requirements are outside this item. |
+
 The cross-cutting [default-plugin account/scope matrix](AI_VISIBILITY_ACCOUNT_MATRIX.md)
 adds owner/admin/non-owner/grantee checks over existing AI resource detail, list, label and
 delete operations. It records failures and fixture gaps independently and does not imply
@@ -71,7 +85,7 @@ API layer and resource/version descriptors remain available for retry.
 | API surface / IT class | Covered API operations | Current status | Current / missing coverage |
 | --- | --- | --- | --- |
 | `ConfigAdminApiOpenApiITCase` | `GET,POST,PUT,DELETE /v3/admin/cs/config` | Covered | Publishes, republishes, queries, updates metadata, and deletes config; covers blank/omitted namespace defaulting to current `public` storage, embedded dots in names, rejection of exact `.`/`..` identity segments, type normalization, required identity/content fields, absent config 404, duplicate/update semantics, and malformed metadata errors. Removed empty-tenant migration and dual-write behavior is outside the 3.3 API contract.  Inherited optional `srcUser`/`appName` binding and persisted detail fields are covered, including the Native remote-Console regression. |
-| `ConfigListAdminApiOpenApiITCase` | `GET /v3/admin/cs/config/list` | Covered | Lists published configs through admin page model with fuzzy and accurate filters; covers type and tag filters, blank dataId group-scoped listing, public namespace defaulting, pagination validation, empty pages, and wrapped error bodies. |
+| `ConfigListAdminApiOpenApiITCase` | `GET /v3/admin/cs/config/list` | Covered | Lists published configs through admin page model with fuzzy and accurate filters; covers type and tag filters, blank dataId group-scoped listing, public namespace defaulting, pagination validation, empty pages, and wrapped error bodies. No-tag blur regression uses three ordinary configs to check raw sequence across full/tail/out-of-range pages, md5, namespace/group, type, description, tags, detail content, wildcard content filtering, and literal SQL metacharacters in content filters. |
 | `ConfigBatchDeleteAdminApiOpenApiITCase` | `DELETE /v3/admin/cs/config/batch` | Covered | Deletes multiple configs by comma-separated ids and verifies absence; covers non-existing ids being ignored, namespace-scoped deletion when ids belong to another namespace, required `ids`, and HTTP 400 v3 Result validation errors. |
 | `ConfigBetaAdminApiOpenApiITCase` | `GET,DELETE /v3/admin/cs/config/beta` | Covered | Queries and deletes beta config created via the current publish API and gray model; covers public namespace defaulting, beta rule generated from `betaIps`, required fields, absent beta 404, and v3 error envelope. Removed `config_info_beta` old-table migration is not an expected scenario. |
 | `ConfigGrayAdminApiOpenApiITCase` | `GET,POST,PUT,DELETE /v3/admin/cs/config/gray` | Covered | Publishes, queries, updates, and deletes gray config with current gray metadata; covers public namespace defaulting, tagv2 version acceptance, grayName/rule requirements, rejection of directory control gray names, absent gray config, and parameter validation errors. Removed `config_info_tag` old-table migration is not an expected scenario. |
@@ -209,3 +223,42 @@ mutations and the current SDK for RAD admission/terminal assertions. ARD reads i
 `A2aMigrationAdminApiOpenApiITCase` use the explicit Client identity. Normal Admin,
 QUIESCING, terminal-marker and restart reports remain separate; see
 the SDK scenario and coverage records for final execution.
+
+
+## Config publish operation messages (#10978)
+
+`ConfigHistoryAdminApiOpenApiITCase#testPublishOperationMessages` and
+`ConfigHistoryConsoleApiOpenApiITCase#testPublishOperationMessages` cover a
+message on initial API insert and later updates, selected history detail and
+previous detail, message omission from history-list responses, a 512-code-point
+emoji round-trip, and 513-character rejection with unchanged content/history.
+
+The `unicodeDetail` history-detail read parses the raw response bytes to avoid the
+known lossy Apache test-response carrier's secondary encoding when the response
+has no charset. The complete Unicode equality assertion remains unchanged. Shared
+public HTTP response handling is outside #10978 and is not fixed by this
+scenario-local read path.
+
+Unit tests cover whitespace normalization, invalid legacy extensions, snapshot
+metadata preservation, RPC/service propagation, and embedded gray history
+without messages. Maintainer SDK IT covers formal message-to-history;
+Maintainer SDK unit tests cover controlled oversized-input exceptions.
+Database-specific transaction fault injection, rolling-version deployments,
+independent-console deployment, and interactive UI behavior remain deployment
+validation scenarios; test definitions do not imply those environments were run.
+
+`ConfigHistoryAdminApiOpenApiITCase#testGrayPublishDoesNotRecordOperationMessage`
+checks that out-of-scope gray publishes omit the message. The Admin case also
+verifies successful CAS messages and unchanged history after a stale-md5
+conflict. Execution results are reported separately from these scenario
+definitions.
+
+## A2A Skill security requirements (#15975, item 2)
+
+Status: Covered = deployed contract verified; Partial = representative scenarios; Pending = no IT.
+
+| API surface / IT class | Covered API operations | Current status | Current/missing coverage |
+| --- | --- | --- | --- |
+| A2A Admin / `A2aAdminApiOpenApiITCase` | Register and query AgentCard with Skill requirements | Covered | Standard `schemes/list`, OR alternatives, multiple schemes/scopes, independent Card requirements, absent/null/empty values; malformed or flat Skill requirements return HTTP 400. No 0.3 Skill conversion or historical rewrite. |
+
+These scenarios extend the existing A2A Admin surface; surface counts and overall classifications remain unchanged.
