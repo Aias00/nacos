@@ -32,8 +32,7 @@ body { margin: 0; background: var(--color-fill-2); color: var(--color-text-1); }
 .demo-banner { margin-bottom: 20px; }
 .page-loading { display: flex; align-items: center; justify-content: center; min-height: 300px; }
 .page-stack { display: flex; flex-direction: column; gap: 20px; }
-.page-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
-.page-heading h4 { margin: 0; }
+.page-heading { display: none; }
 .filter-form { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px; }
 .filter-form .arco-form-item { margin-bottom: 0; }
 .table-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }

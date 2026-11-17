@@ -36,9 +36,6 @@ export default function Overview() {
   const resource = useResource(load);
   const current = namespaces.find((item) => item.namespace === namespace);
   return <div className="page-stack">
-    <div className="page-heading"><div><Typography.Title heading={4}>工作台</Typography.Title>
-      <Typography.Text type="secondary">集中查看当前命名空间的配置与服务</Typography.Text></div>
-      <Button icon={<IconRefresh />} loading={resource.loading} onClick={resource.reload}>刷新</Button></div>
     <RequestError error={resource.error} retry={resource.reload} />
     <Grid.Row gutter={[20, 20]}>
       {[
@@ -49,7 +46,7 @@ export default function Overview() {
         <Statistic title={String(title)} value={typeof value === 'number' ? value : '—'} suffix={suffix} loading={resource.loading} />
       </Card></Grid.Col>)}
     </Grid.Row>
-    <Card title="当前空间" bordered={false}>
+    <Card title="当前空间" bordered={false} extra={<Button icon={<IconRefresh />} loading={resource.loading} onClick={resource.reload}>刷新</Button>}>
       <Descriptions column={{ xs: 1, md: 3 }} data={[
         { label: '命名空间', value: current?.namespaceShowName || namespace },
         { label: 'Namespace ID', value: <Typography.Text copyable>{namespace || 'public'}</Typography.Text> },
