@@ -150,6 +150,7 @@
                 </includes>
                 <excludes>
                     <exclude>static/console-ui/.vscode/**</exclude>
+                    <exclude>static/legacy/**</exclude>
                 </excludes>
             </resource>
         </resources>

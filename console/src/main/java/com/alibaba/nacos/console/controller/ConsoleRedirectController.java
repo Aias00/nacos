@@ -107,7 +107,8 @@ public class ConsoleRedirectController {
     }
     
     private String defaultUi() {
-        return UI_LEGACY.equals(EnvUtil.getProperty(PROPERTY_DEFAULT_UI, UI_NEXT))
+        return new ClassPathResource("static/legacy/index.html").exists()
+            && UI_LEGACY.equals(EnvUtil.getProperty(PROPERTY_DEFAULT_UI, UI_NEXT))
             && !Boolean.FALSE.equals(EnvUtil.getProperty("nacos.console.ui.legacy.enabled",
                 Boolean.class, true)) ? UI_LEGACY : UI_NEXT;
     }

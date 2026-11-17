@@ -73,6 +73,14 @@ records configuration, boundaries and environment requirements. Existing state,
 health, JSON API and SDK contracts remain unchanged. Static HTML presentation
 checks are outside the business API-surface totals below.
 
+## Fork release packaging
+
+Legacy static assets are removed from this branch and excluded by Maven/Arco packaging.
+`ConsoleExposureITCase` includes direct Legacy JS/CSS/image and query requests; the
+fork release uses Legacy-disabled and UI-notices-disabled expectations. The Console
+scenario matrix records physical absence, retained legal files and unchanged Arco,
+auth, health and business API behavior. API surface totals are unchanged.
+
 ## Optional Console exposure controls
 
 `ConsoleExposureITCase` and `ServerStateConsoleApiOpenApiITCase` strengthen the existing

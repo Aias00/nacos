@@ -32,6 +32,8 @@ class IntegratedPackagingTest(unittest.TestCase):
         self.ui.mkdir()
         (self.ui / 'index.html').write_text('<html><head></head><body>Arco</body></html>')
         (self.ui / 'runtime-config.js').write_text('standalone-settings')
+        (self.ui / 'NOTICE').write_text('Nacos redistribution notice')
+        (self.ui / 'THIRD_PARTY_NOTICES.md').write_text('Third-party notices')
         (self.ui / 'assets').mkdir()
         (self.ui / 'assets/editor.worker.js').write_text('worker-content')
         self.server = self.root / 'original.jar'
@@ -42,6 +44,10 @@ class IntegratedPackagingTest(unittest.TestCase):
         with zipfile.ZipFile(nested, 'w') as console:
             console.writestr('com/example/Keep.class', b'unchanged-class-bytes')
             console.writestr('static/legacy/index.html', 'legacy-ui')
+            console.writestr('static/legacy/js/main.js', 'legacy-javascript')
+            console.writestr('static/legacy/css/main.css', 'legacy-styles')
+            console.writestr('META-INF/NOTICE', 'Retained dependency notice')
+            console.writestr('static/custom/logo.svg', 'custom-logo')
             console.writestr('static/next/old.js', 'obsolete-next-build')
             if signed:
                 console.writestr('META-INF/SIGNATURE.SF', 'signature')
@@ -49,7 +55,7 @@ class IntegratedPackagingTest(unittest.TestCase):
             boot.writestr('BOOT-INF/lib/nacos-console-3.3.0.jar', nested.getvalue(), compress_type=zipfile.ZIP_STORED)
             boot.writestr('BOOT-INF/classes/Keep.class', b'bootstrap-class-bytes')
 
-    def test_preserves_backend_and_legacy_while_packaging_production_assets(self):
+    def test_removes_legacy_while_preserving_backend_and_legal_notices(self):
         self.server_fixture()
         original = self.server.read_bytes()
         favicon = self.root / 'favicon.svg'
@@ -63,7 +69,11 @@ class IntegratedPackagingTest(unittest.TestCase):
             self.assertEqual(boot.getinfo('BOOT-INF/lib/nacos-console-3.3.0.jar').compress_type, zipfile.ZIP_STORED)
             with zipfile.ZipFile(io.BytesIO(boot.read('BOOT-INF/lib/nacos-console-3.3.0.jar'))) as console:
                 self.assertEqual(console.read('com/example/Keep.class'), b'unchanged-class-bytes')
-                self.assertEqual(console.read('static/legacy/index.html'), b'legacy-ui')
+                self.assertFalse(any(name.startswith('static/legacy/') for name in console.namelist()))
+                self.assertEqual(console.read('META-INF/NOTICE'), b'Retained dependency notice')
+                self.assertEqual(console.read('static/custom/logo.svg'), b'custom-logo')
+                self.assertEqual(console.read('static/next/NOTICE'), b'Nacos redistribution notice')
+                self.assertEqual(console.read('static/next/THIRD_PARTY_NOTICES.md'), b'Third-party notices')
                 self.assertEqual(console.read('static/next/assets/editor.worker.js'), b'worker-content')
                 self.assertNotIn('static/next/old.js', console.namelist())
                 runtime = console.read('static/next/runtime-config.js').decode()

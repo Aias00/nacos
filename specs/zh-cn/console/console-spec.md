@@ -121,6 +121,13 @@ Console 负责浏览器入口和静态资源服务行为：
 
 Console guide 和 announcement 内容属于 UI 展示数据，不是标准 Core 服务端状态，也不得作为领域配置使用。
 
+本分支发行 Arco Console，不包含 `static/legacy/**`：删除已提交的 Legacy 构建资源，
+Maven 资源打包和 Arco 集成工具均排除该目录；Legacy 入口缺失时，即使配置选择 `legacy` 也回退到 Next。
+随包 bootstrap/distribution 配置默认设置 `nacos.console.ui.legacy.enabled=false` 和
+`nacos.console.ui.notices.enabled=false`；升级既有部署时，需将这两个值应用到保留的配置中。
+Legacy/历史入口、直接静态资源及 UI 法律声明下载返回空 HTTP 404。
+LICENSE、NOTICE 与第三方声明继续保留在发行产物中，仅关闭 HTTP 可见性。
+
 `console-ui-arco` 是独立静态部署的 React/Arco 管理界面，复用既有 Console/Auth API，
 不增加服务端 UI 默认选项或修改客户端协议。其运行时配置独立指定展示名称和同源 API 代理前缀；
 演示入口必须明确标识，演示操作仅访问浏览器内的示例数据，真实登录失败不得自动转入演示模式。

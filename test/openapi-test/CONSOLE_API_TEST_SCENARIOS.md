@@ -108,6 +108,17 @@ Presentation-only settings do not change Client/Admin/Console JSON API or SDK co
 `HealthConsoleApiOpenApiITCase` remain the compatibility checks for state and health.
 These static-entry scenarios are not added to the business API totals.
 
+### Fork release without Legacy assets
+
+This branch removes Legacy build resources and excludes them in Maven and Arco
+packaging. Its shipped and upgraded configuration disables `ui.legacy.enabled`
+and `ui.notices.enabled`. Use the restricted expectation values (`false`) for
+`ConsolePresentationITCase` and `ConsoleExposureITCase`; direct Legacy HTML/JS/CSS/images
+and query variants return empty 404 while Arco HTML/assets/auth/business APIs remain
+available. Packaging regression verifies Legacy HTML/JS/CSS are absent even when
+integrating an older input JAR, while legal notices remain in the artifact. The
+compatibility profile below describes an explicitly supplied historical build.
+
 ### Optional Console exposure controls
 
 `ConsoleExposureITCase` exercises externally configured controls without writing server

@@ -67,15 +67,16 @@ def integrate(server_jar, ui_dist, output, context_path='/control', name='服务
                 raise ValueError('Signed Console modules require their original signing process')
             with zipfile.ZipFile(nested, 'w') as target:
                 for info in console.infolist():
-                    if not info.filename.startswith('static/next/'):
+                    if not info.filename.startswith(('static/next/', 'static/legacy/')):
                         target.writestr(copy.copy(info), console.read(info.filename))
                 for key, value in assets.items():
                     target.writestr(key, value, compress_type=zipfile.ZIP_DEFLATED)
             with zipfile.ZipFile(io.BytesIO(nested.getvalue())) as checked:
                 if checked.testzip() is not None:
                     raise ValueError('Invalid rebuilt Console module')
+                assert not any(name.startswith('static/legacy/') for name in checked.namelist())
                 for info in console.infolist():
-                    if not info.filename.startswith('static/next/'):
+                    if not info.filename.startswith(('static/next/', 'static/legacy/')):
                         assert checked.read(info.filename) == console.read(info.filename)
         with tempfile.TemporaryDirectory(prefix='arco-integrated-', dir=output.parent) as work:
             temporary = Path(work) / 'nacos-server.jar'

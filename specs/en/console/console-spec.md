@@ -147,6 +147,15 @@ Console owns the browser entry and static asset serving behavior:
 Console guide and announcement content are UI presentation data. They are not
 canonical Core server state and must not be used as domain configuration.
 
+This fork distributes the Arco Console without `static/legacy/**`: tracked Legacy
+build assets are removed and both Maven resources and the Arco integration tool exclude
+them from generated artifacts. Selecting `legacy` falls back to Next when its entry
+is absent. Shipped bootstrap/distribution settings set `nacos.console.ui.legacy.enabled=false`
+and `nacos.console.ui.notices.enabled=false`; operators upgrading an existing deployment
+must apply these two settings to its retained configuration. Legacy/historical entries,
+direct assets and UI legal-file downloads return empty HTTP 404. LICENSE, NOTICE and
+third-party notices remain in the release artifact; only their HTTP visibility is disabled.
+
 `console-ui-arco` is an independently hosted React/Arco frontend using the existing
 Console/Auth APIs, without adding a server UI default or changing client protocols.
 Its runtime configuration specifies the product name and same-origin API prefix.

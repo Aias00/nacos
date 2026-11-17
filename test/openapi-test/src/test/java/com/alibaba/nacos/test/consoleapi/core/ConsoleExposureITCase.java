@@ -94,7 +94,9 @@ public class ConsoleExposureITCase extends ConsoleApiBaseITCase {
     @Test
     public void testLegacyAssetsCannotBypassDisabledEntries() throws Exception {
         boolean enabled = expected("ui.legacy.enabled", true);
-        for (String path : new String[] {"/legacy/js/main.js", "/console-ui/public/js/jquery.js",
+        for (String path : new String[] {"/legacy/js/main.js", "/legacy/css/main.css",
+                "/legacy/img/favicon.ico", "/legacy/js/main.js?cache=ignored",
+                "/console-ui/public/js/jquery.js",
                 "/img/nacos.png", "/img/logo-2000-390.svg"}) {
             HttpResponse response = getRaw(consolePath(path), AuthIdentity.ANONYMOUS);
             assertEquals(enabled ? 200 : 404, response.code(), path + ": " + response.body());

@@ -169,7 +169,7 @@ python3 -m unittest discover -s tests -p 'test_*.py'
 
 `--context-path` 必须与服务器 `nacos.console.contextPath` 一致。整合产物会将 API 前缀设为
 该 context path，并关闭演示入口。默认附带通用 favicon，可用 `--favicon` 指定自己的 SVG。
-脚本生成新的 JAR，不覆盖输入或已存在的输出；保留 Java 类、其他模块和 Legacy 页面，
+脚本生成新的 JAR，不覆盖输入或已存在的输出；保留 Java 类、其他模块和版权声明，并移除 Legacy 页面资源，
 并检查嵌套 JAR 的存储格式及资源 CRC。它不读取服务器密码、签名密钥或业务数据。
 浏览器存储前缀可用 `--storage-prefix` 指定；升级迁移需显式传入 `--legacy-storage-prefix`。
 默认整合产物使用中性前缀，不包含迁移来源配置。
@@ -183,3 +183,9 @@ python3 -m unittest discover -s tests -p 'test_*.py'
 已执行的功能与故障验证范围见 [验证记录](docs/validation.md)。
 
 设计约束见 [DESIGN.md](DESIGN.md)，上游来源见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+
+## 本分支发行资源
+
+集成产物移除 Legacy 静态资源，Maven 也排除 `static/legacy/**`。升级现有部署时保留业务配置，
+并设置 `nacos.console.ui.legacy.enabled=false`、`nacos.console.ui.notices.enabled=false`；
+旧控制台入口和声明文件下载返回空 404。版权和第三方声明仍保留在分发包中。
