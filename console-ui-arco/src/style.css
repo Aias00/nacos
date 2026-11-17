@@ -62,3 +62,6 @@ body { margin: 0; background: var(--color-fill-2); color: var(--color-text-1); }
   .filter-form .arco-form-label-item { white-space: nowrap; min-width: 64px; }
   .filter-form .arco-input-wrapper { width: 100% !important; }
 }
+
+.config-data-id.arco-btn { display: block; max-inline-size: 100%; min-inline-size: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: start; }

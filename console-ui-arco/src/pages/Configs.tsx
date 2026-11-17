@@ -15,7 +15,7 @@
  */
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Card, Drawer, Form, Grid, Input, Message, Modal, Select, Space, Spin, Table, Tag, Typography } from '@arco-design/web-react';
+import { Button, Card, Drawer, Form, Grid, Input, Message, Modal, Select, Space, Spin, Table, Tag, Tooltip, Typography } from '@arco-design/web-react';
 import { IconPlus, IconRefresh, IconSearch } from '@arco-design/web-react/icon';
 import { api } from '../api';
 import { useConsole } from '../context';
@@ -104,12 +104,12 @@ export default function Configs() {
         <Typography.Text type="secondary">共 {resource.data?.totalCount ?? '—'} 项配置</Typography.Text></Space>
         <Button icon={<IconRefresh />} loading={resource.loading} onClick={resource.reload}>刷新</Button></div>
       <RequestError error={resource.error} retry={resource.reload} />
-      <Table rowKey={(row) => row.groupName + '/' + row.dataId} loading={resource.loading || opening} data={resource.data?.pageItems || []}
+      <Table tableLayoutFixed rowKey={(row) => row.groupName + '/' + row.dataId} loading={resource.loading || opening} data={resource.data?.pageItems || []}
         scroll={{ x: 850 }} pagination={{ ...pagination, total: resource.data?.totalCount || 0, showTotal: true, sizeCanChange: true }}
         onChange={(page) => setPagination({ current: page.current || 1, pageSize: page.pageSize || 10 })}
-        columns={[{ title: 'Data ID', dataIndex: 'dataId', width: 270, render: (value, row) => <Button type="text" onClick={() => open(row)}>{value}</Button> },
-          { title: 'Group', dataIndex: 'groupName', width: 180 }, { title: '配置格式', dataIndex: 'type', width: 100, render: (value) => <Tag color="arcoblue">{String(value || 'text').toUpperCase()}</Tag> },
-          { title: '归属应用', dataIndex: 'appName', render: (value) => value || '—' },
+        columns={[{ title: 'Data ID', dataIndex: 'dataId', width: 270, render: (value, row) => <Tooltip content={<span aria-hidden="true">{value}</span>} trigger={['hover', 'focus']}><Button className="config-data-id" type="text" onClick={() => open(row)}>{value}</Button></Tooltip> },
+          { title: 'Group', dataIndex: 'groupName', width: 180, ellipsis: true }, { title: '配置格式', dataIndex: 'type', width: 100, render: (value) => <Tag color="arcoblue">{String(value || 'text').toUpperCase()}</Tag> },
+          { title: '归属应用', dataIndex: 'appName', ellipsis: true, render: (value) => value || '—' },
           { title: '操作', width: 190, render: (_, row) => <Space size={0}><Button type="text" size="small" onClick={() => open(row)}>编辑</Button>
             <Button type="text" size="small" onClick={() => navigate(`/history?${new URLSearchParams({ dataId: row.dataId, groupName: row.groupName })}`)}>历史</Button>
             <Button type="text" size="small" status="danger" onClick={() => remove(row)}>删除</Button></Space> }]} />
