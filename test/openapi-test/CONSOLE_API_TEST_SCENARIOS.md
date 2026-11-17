@@ -16,6 +16,13 @@
 
 # Console API IT Scenario Index
 
+Config HTTP namespace resolution is additionally verified by
+`ConfigNamespaceResolutionOpenApiITCase` and the existing Config functional ITs.
+The [namespace scenario matrix](CONFIG_NAMESPACE_API_TEST_SCENARIOS.md) records
+the affected operations, parser/Controller fields, defaults, binding boundaries,
+clone source READ / target WRITE checks, and compatibility scope. These scenarios
+strengthen existing surface rows; classifications and coverage totals are unchanged.
+
 This document records which console API operations are covered by the
 standalone-server IT classes under
 `src/test/java/com/alibaba/nacos/test/consoleapi`.
@@ -104,7 +111,7 @@ These static-entry scenarios are not added to the business API totals.
 | API surface / IT class | Covered API operations | Current status | Current / missing coverage |
 | --- | --- | --- | --- |
 | `ConfigConsoleApiOpenApiITCase` | `GET,POST,DELETE /v3/console/cs/config` | Covered | Publishes, queries, updates, and deletes config; verifies content, md5, type, description, config tags, namespace/group defaults into current `public` storage, embedded dots in names, rejection of exact `.`/`..` identity segments, missing required fields, invalid type, and absent config behavior. Removed empty-tenant migration and dual-write behavior is outside the 3.3 console API contract.  Inherited optional `srcUser`/`appName` binding and persisted detail fields are covered, including the Native remote-Console regression. |
-| `ConfigListConsoleApiOpenApiITCase` | `GET /v3/console/cs/config/list`<br>`GET /v3/console/cs/config/searchDetail` | Covered | Verifies list/search pagination shape, accurate and blur search behavior, dataId/group/content filters, empty pages, page validation, and required search parameters. |
+| `ConfigListConsoleApiOpenApiITCase` | `GET /v3/console/cs/config/list`<br>`GET /v3/console/cs/config/searchDetail` | Covered | Verifies list/search pagination shape, accurate and blur search behavior, dataId/group/content filters, empty pages, page validation, and required search parameters. Both no-tag blur paths use three ordinary configs to check raw sequence across full/tail/out-of-range pages, md5, namespace/group, type, description, tags, and detail content. The searchDetail path also checks wildcard content filtering and literal SQL metacharacters in content filters; list has no content-filter parameter. |
 | `ConfigListenerConsoleApiOpenApiITCase` | `GET /v3/console/cs/config/listener`<br>`GET /v3/console/cs/config/listener/ip` | Covered | Verifies listener status response shape for config and IP scoped queries, missing dataId/group validation, query type fields, and controlled empty listener state. |
 | `ConfigHistoryConsoleApiOpenApiITCase` | `GET /v3/console/cs/history`<br>`GET /v3/console/cs/history/list`<br>`GET /v3/console/cs/history/previous`<br>`GET /v3/console/cs/history/configs` | Covered | Publishes versioned config changes and verifies history list/detail/previous/config snapshots, including storage IDs represented as JSON strings; validates missing identifiers, pagination, and absent history/config behavior. |
 | `ConfigBetaConsoleApiOpenApiITCase` | `GET,DELETE /v3/console/cs/config/beta` | Covered | Publishes current gray-backed beta config through console headers, queries and deletes beta content, and verifies missing/absent beta responses stay wrapped and non-500. Removed `config_info_beta` old-table migration is not an expected scenario. |
@@ -147,7 +154,7 @@ rejection and the resulting force-publish visibility rule.
 | `AgentSpecUploadConsoleApiOpenApiITCase` | `POST /v3/console/ai/agentspecs/upload` | Covered | Verifies single AgentSpec ZIP upload from `manifest.json` plus resources, overwrite of an editing draft, next draft version after publish, seed archives importing multiple AgentSpecs, empty file, malformed ZIP, and missing manifest errors. |
 | `AiResourceImportConsoleApiOpenApiITCase` | `GET /v3/console/ai/import/sources`<br>`POST /v3/console/ai/import/search`<br>`POST /v3/console/ai/import/validate`<br>`POST /v3/console/ai/import/execute` | Covered | Verifies enabled managed importer plugins as the source list, resourceType filters, sanitized source info, unsupported resource type empty result, missing resourceType/sourceId/selectedItems, malformed JSON options/selectedItems, empty selected items, unknown source not-found, unsupported source/resourceType combinations, and controlled error bodies without performing external network import. |
 | `PipelineConsoleApiOpenApiITCase` | `GET /v3/console/ai/pipelines`<br>`GET /v3/console/ai/pipelines/list`<br>`GET /v3/console/ai/pipelines/detail`<br>`GET /v3/console/ai/pipelines/{pipelineId}` | Partial | Verifies the current list/detail contracts for resourceType/resourceName/namespaceId/version filters, required resourceType, page validation, required pipelineId, and absent pipeline not-found errors. The deprecated base-path list and path-variable detail endpoints return HTTP 410 and `API_DEPRECATED` by default and may be temporarily reopened with `nacos.core.api.compatibility.enabled=true`. Successful detail creation is not covered in the default standalone IT environment because pipeline rows require configured publish-pipeline plugins. |
-| `CopilotConsoleApiOpenApiITCase` | `GET,POST /v3/console/copilot/config`<br>`POST /v3/console/copilot/skill/optimize`<br>`POST /v3/console/copilot/skill/generate`<br>`POST /v3/console/copilot/prompt/optimize`<br>`POST /v3/console/copilot/prompt/debug` | Partial | Verifies config save/read for API key, model, studio URL, and studio project; records that non-editable config fields are accepted but ignored by the save path. Verifies malformed JSON config error and SSE validation error events for empty bodies and missing required skill/background/prompt/userInput fields without invoking an external LLM provider. |
+| `CopilotConsoleApiOpenApiITCase` | `GET,POST /v3/console/copilot/config`<br>`POST /v3/console/copilot/skill/optimize`<br>`POST /v3/console/copilot/skill/generate`<br>`POST /v3/console/copilot/prompt/optimize`<br>`POST /v3/console/copilot/prompt/debug` | Partial | Verifies config save/read for model, studio URL, and studio project; read returns the stored api key masked, the effective selection with its source (`DEPLOYMENT`/`STORED`/`NONE`), the active connection, and a sanitized connection list without credentials but with the effective credential source (`actualSource`: `DEPLOYMENT`/`CONSOLE`/`ENVIRONMENT`); records that non-editable config fields are accepted but ignored by the save path. Verifies malformed JSON config error and SSE validation error events for empty bodies and missing required skill/background/prompt/userInput fields without invoking an external LLM provider. |
 
 ## Validation Snapshot
 
@@ -242,3 +249,28 @@ independent Console deployment. Agent Runtime assertions require enabled/healthy
 and absence of the removed state field. These executions do not change the
 API-surface denominator; final outcomes and prior intermittent Prompt observations
 are recorded separately in the SDK scenario and coverage records.
+
+
+## Config publish operation messages (#10978)
+
+`ConfigHistoryAdminApiOpenApiITCase#testPublishOperationMessages` and
+`ConfigHistoryConsoleApiOpenApiITCase#testPublishOperationMessages` cover a
+message on initial API insert and later updates, selected history detail and
+previous detail, message omission from history-list responses, a 512-code-point
+emoji round-trip, and 513-character rejection with unchanged content/history.
+
+The `unicodeDetail` history-detail read parses the raw response bytes to avoid the
+known lossy Apache test-response carrier's secondary encoding when the response
+has no charset. The complete Unicode equality assertion remains unchanged. Shared
+public HTTP response handling is outside #10978 and is not fixed by this
+scenario-local read path.
+
+Unit tests cover whitespace normalization, invalid legacy extensions, snapshot
+metadata preservation, RPC/service propagation, and embedded gray history
+without messages. Maintainer SDK IT covers formal message-to-history;
+Maintainer SDK unit tests cover controlled oversized-input exceptions.
+`ConfigRemoteHandlerTest` covers rejection before forwarding with the same
+parameter-validation error, blank-message normalization, and Beta bypass.
+Database-specific transaction fault injection, rolling-version deployments,
+independent-console deployment, and interactive UI behavior remain deployment
+validation scenarios; test definitions do not imply those environments were run.

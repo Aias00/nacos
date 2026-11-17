@@ -61,6 +61,50 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ConfigMaintainerServiceMaintainerSdkITCase extends MaintainerSdkBaseITCase {
 
     @Test
+    void shouldPreserveBlurSearchPageBoundariesAndFields() throws Exception {
+        ConfigMaintainerService service = createConfigMaintainerService();
+        String prefix = randomDataId("sample-routing");
+        String group = randomGroup("page-fields");
+        String namespace = Constants.DEFAULT_NAMESPACE_ID;
+        String expectedContent = "sample-routing=true\nlast-line=true";
+        for (int index = 0; index < 3; index++) {
+            String dataId = prefix + "-" + index;
+            addCleanup(() -> service.deleteConfig(dataId, group, namespace));
+            assertTrue(service.publishConfig(dataId, group, namespace,
+                    index == 2 ? expectedContent : "sample=" + index));
+        }
+        Page<ConfigBasicInfo> first = service.searchConfigs(prefix, group, namespace, null, null);
+        assertEquals(3, first.getTotalCount());
+        assertEquals(1, first.getPagesAvailable());
+        assertEquals(3, first.getPageItems().size());
+        for (int index = 0; index < 3; index++) {
+            assertEquals(prefix + "-" + index, first.getPageItems().get(index).getDataId());
+            assertEquals(group, first.getPageItems().get(index).getGroupName());
+            assertEquals(namespace, first.getPageItems().get(index).getNamespaceId());
+        }
+        Page<ConfigBasicInfo> second = service.searchConfigByDetails(prefix + "*", group, namespace,
+                "blur", null, null, null, null, 2, 2);
+        assertEquals(3, second.getTotalCount());
+        assertEquals(2, second.getPageNumber());
+        assertEquals(1, second.getPageItems().size());
+        assertEquals(prefix + "-2", second.getPageItems().get(0).getDataId());
+        assertEquals(first.getPageItems().get(2).getId(), second.getPageItems().get(0).getId());
+        assertEquals(first.getPageItems().get(2).getMd5(), second.getPageItems().get(0).getMd5());
+        Page<ConfigBasicInfo> empty = service.searchConfigByDetails(prefix + "*", group, namespace,
+                "blur", null, null, null, null, 3, 2);
+        assertEquals(3, empty.getTotalCount());
+        assertTrue(empty.getPageItems().isEmpty());
+        Page<ConfigBasicInfo> content = service.searchConfigs(prefix, group, namespace, "last-line=true", null);
+        assertEquals(1, content.getTotalCount());
+        assertEquals(prefix + "-2", content.getPageItems().get(0).getDataId());
+        assertEquals(expectedContent, service.getConfig(prefix + "-2", group, namespace).getContent());
+        Page<ConfigBasicInfo> noMatch = service.searchConfigs(prefix, group, namespace,
+                "missing' OR 1=1 --", null);
+        assertEquals(0, noMatch.getTotalCount());
+        assertTrue(noMatch.getPageItems().isEmpty());
+    }
+
+    @Test
     void shouldManageConfigLifecycle() throws Exception {
         ConfigMaintainerService maintainerService = createConfigMaintainerService();
         String dataId = randomDataId("config-lifecycle");
@@ -324,7 +368,8 @@ class ConfigMaintainerServiceMaintainerSdkITCase extends MaintainerSdkBaseITCase
         addCleanup(() -> maintainerService.deleteConfig(dataId, group, namespaceId));
 
         assertTrue(maintainerService.publishConfig(dataId, group, namespaceId, firstContent));
-        assertTrue(maintainerService.publishConfig(dataId, group, namespaceId, secondContent));
+        assertTrue(maintainerService.publishConfig(dataId, group, namespaceId, secondContent,
+                null, null, null, "configuration description", "text", "current operation"));
         ConfigDetailInfo currentConfig = maintainerService.getConfig(dataId, group, namespaceId);
         assertConfigDetail(currentConfig, dataId, group, namespaceId, secondContent);
         assertNotNull(currentConfig.getId());
@@ -358,12 +403,14 @@ class ConfigMaintainerServiceMaintainerSdkITCase extends MaintainerSdkBaseITCase
                 maintainerService.getConfigHistoryInfo(dataId, group, namespaceId,
                         newestHistory.getId());
         assertEquals(firstContent, historyDetail.getContent());
+        assertEquals("current operation", historyDetail.getChangeMessage());
         assertNull(historyDetail.getSchema());
 
         ConfigHistoryDetailInfo previousDetail =
                 maintainerService.getPreviousConfigHistoryInfo(dataId, group, namespaceId,
                         currentConfig.getId());
         assertEquals(firstContent, previousDetail.getContent());
+        assertEquals("current operation", previousDetail.getChangeMessage());
         assertNull(previousDetail.getSchema());
         assertEquals(newestHistory.getId(), previousDetail.getId());
     }
@@ -387,6 +434,10 @@ class ConfigMaintainerServiceMaintainerSdkITCase extends MaintainerSdkBaseITCase
         assertTrue(maintainerService.publishBetaConfig(dataId, group, namespaceId, content,
                 "maintainer-sdk-it", "maintainer", "beta", "beta config",
                 ConfigType.TEXT.getType(), betaIps));
+        ConfigHistoryBasicInfo betaHistory = maintainerService.listConfigHistory(dataId, group,
+                namespaceId, 1, 10).getPageItems().get(0);
+        assertNull(maintainerService.getConfigHistoryInfo(dataId, group, namespaceId,
+                betaHistory.getId()).getChangeMessage());
         ConfigGrayInfo beta = maintainerService.queryBeta(dataId, group, namespaceId);
         assertConfigDetail(beta, dataId, group, namespaceId, content);
         assertEquals("beta", beta.getGrayName());

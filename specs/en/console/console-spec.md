@@ -141,6 +141,8 @@ Console owns the browser entry and static asset serving behavior:
   configured files when present;
 - static asset paths and browser resources may be excluded from auth checks, but
   that exclusion must not include domain mutation APIs.
+- In the Next console header, translated navigation labels must not push the
+  authenticated user's menu and logout action outside the visible desktop viewport.
 
 Console guide and announcement content are UI presentation data. They are not
 canonical Core server state and must not be used as domain configuration.
@@ -218,6 +220,22 @@ Rules:
   implementation;
 - handler implementations must return the same domain meaning across deployment
   modes even if the transport path differs.
+
+The first-phase target offers optional `changeMessage` input in the new console
+for ordinary and CAS updates to existing formal configs, with plain-text display
+in history detail. The legacy console is unchanged in this phase. Create and
+delete workflows have no input; Beta/gray and rollback gain
+no message input. Backend ordinary and CAS publish APIs handle inserts and
+updates identically and must not ignore an API caller's message for new configs.
+History-list display and searching, sorting, or indexing by message are out of
+scope. This contract does not require a legacy-console UI change.
+The message is independent of description and is never prefilled from config or
+history. Clear input after a successful formal publish and retain it after
+failure. Beta publishes do not submit or clear an unsent formal message. If an adapter
+does not preserve the JSON property, history detail may omit the message; actual
+database persistence failures retain their existing behavior.
+Merged and independent console handlers must preserve the same semantics defined
+by the [Config Persistence And History Spec](../config/config-persistence-history-spec.md).
 
 ## 7. Independent Console Deployment
 
