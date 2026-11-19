@@ -123,7 +123,8 @@ export default function Configs() {
         <Grid.Row gutter={16}><Grid.Col span={12}><Form.Item label="配置格式"><Select value={format} onChange={setFormat} options={formats.map((value) => ({ value, label: value.toUpperCase() }))} /></Form.Item></Grid.Col>
           <Grid.Col span={12}><Form.Item field="appName" label="归属应用"><Input allowClear placeholder="可选" /></Form.Item></Grid.Col></Grid.Row>
         <Form.Item field="desc" label="描述"><Input allowClear placeholder="配置用途说明" /></Form.Item>
-        <Form.Item label="配置内容" required><Suspense fallback={<Spin />}><Editor value={content} onChange={setContent} type={format} dark={dark} /></Suspense></Form.Item>
+        <Form.Item label="配置内容" required><Suspense fallback={<Spin />}><Editor value={content} onChange={setContent} type={format} dark={dark}
+          height="clamp(160px, calc(100dvh - 420px), 380px)" /></Suspense></Form.Item>
       </Form>
     </Drawer>
   </div>;

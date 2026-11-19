@@ -29,13 +29,14 @@ const languages: Record<string, string> = { text: 'plaintext', yaml: 'yaml', jso
 
 export default function Editor({ value, onChange, type, dark = false, readOnly = false, height = 380 }: {
   value: string; onChange?: (value: string) => void; type: string;
-  dark?: boolean; readOnly?: boolean; height?: number;
+  dark?: boolean; readOnly?: boolean; height?: number | string;
 }) {
   return <div className="editor-frame"><MonacoEditor height={height} value={value}
     language={languages[type] || 'plaintext'} theme={dark ? 'vs-dark' : 'vs'}
     onChange={(next) => onChange?.(next || '')} options={{ readOnly, minimap: { enabled: false },
       // Textarea input preserves keyboard/IME focus within Arco's accessible focus lock.
       editContext: false,
+      scrollbar: { alwaysConsumeMouseWheel: false },
       fontSize: 13, scrollBeyondLastLine: false, automaticLayout: true, tabSize: 2,
       ariaLabel: readOnly ? '配置内容（只读）' : '配置内容编辑器' }} /></div>;
 }
