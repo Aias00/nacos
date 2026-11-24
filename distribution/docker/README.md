@@ -10,6 +10,8 @@ See the License for the specific language governing permissions and limitations.
 
 # CF Server 统一数据库镜像
 
+部署、初始化和导入的完整操作步骤见 [CF Server 使用手册](../../docs/CF_SERVER_USAGE.md)。
+
 `harbor.dap.local/middleware/cf-server` 包含 Derby、MySQL、PostgreSQL、达梦的数据源插件和
 JDBC 驱动。相同标签通过 manifest list 支持 `linux/amd64` 和 `linux/arm64`。
 默认单机 Derby；外部数据库根据 `DB_URL` 自动选择，不再需要专用达梦镜像。
