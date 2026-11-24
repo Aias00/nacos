@@ -293,3 +293,13 @@ Bootstrap 为默认 Server 组合内置 GraalVM 可达性元数据，Native 构�
 - [可观测钩子规范](foundation-observability-hooks-spec.md)
 - [插件规范](../plugin/plugin-spec.md)
 - [环境插件规范](../plugin/environment-plugin-spec.md)
+
+## 分支容器配置导入
+
+容器通过 CF_INIT_CONFIG_FILE 显式开启一次性配置导入：快照输入文件，启动服务，等待本机就绪，
+再使用认证账号调用既有 Config Admin 导入 API。单个 UTF-8 文件封装为相同元数据压缩包，默认
+同名跳过，覆盖需明确开启；原生 ZIP 保留包内元数据，不直接操作持久层。
+首次管理员初始化必须显式提供非空白密码，只调用创建一次的接口，不重置已有管理员。
+完整成功后才将文件与目标摘要记录到数据卷；同一摘要重启可跳过，输入或目标变化重新处理。
+部分成功、网络或认证失败不记完成状态，停止服务并使启动失败；已提交的条目不自动回滚。
+容器健康检查在导入完成前不就绪，PID1 转发停止信号并回收 Java。独立 Console 不执行本地 Admin 自动导入。

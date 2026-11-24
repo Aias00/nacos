@@ -101,8 +101,59 @@ export DB_VALIDATION_QUERY
 if [ "${DEPLOYMENT}" != console ] && [ "${DB_TYPE}" != derby ] && [ "${DB_INIT_ENABLED}" = true ]; then
   java -cp "${NACOS_HOME}/bin/schema-init.jar:${NACOS_HOME}/plugins/*" cn.dap.cf.SchemaInitializer
 fi
+# Keep API/health helpers aligned with the effective local listening endpoints.
+property_value() {
+  awk -v wanted="$1" -v fallback="$2" '
+    BEGIN { value=fallback }
+    /^[[:space:]]*([#!]|$)/ { next }
+    { key=$0; sub(/[=:].*/, "", key); gsub(/^[[:space:]]+|[[:space:]]+$/, "", key)
+      if (key == wanted) {
+        line=$0
+        if (line ~ /[=:]/) sub(/^[^=:]*[=:][[:space:]]*/, "", line); else line=""
+        sub(/[[:space:]]+$/, "", line); value=line
+      }
+    }
+    END { print value }
+  ' "${NACOS_HOME}/conf/application.properties"
+}
+port=$(property_value nacos.server.main.port 8848)
+context=$(property_value nacos.server.contextPath /nacos)
+console_port=$(property_value nacos.console.port 8080)
+console_context=$(property_value nacos.console.contextPath '')
+port=${NACOS_SERVER_MAIN_PORT:-$port}
+context=${NACOS_SERVER_CONTEXTPATH-$context}
+console_port=${NACOS_CONSOLE_PORT:-$console_port}
+console_context=${NACOS_CONSOLE_CONTEXTPATH-$console_context}
+for option in ${JAVA_OPTS:-} ${JAVA_TOOL_OPTIONS:-} ${JDK_JAVA_OPTIONS:-} ${_JAVA_OPTIONS:-} "$@"; do
+  case "$option" in
+    --nacos.server.main.port=*|-Dnacos.server.main.port=*) port=${option#*=} ;;
+    --nacos.server.contextPath=*|-Dnacos.server.contextPath=*) context=${option#*=} ;;
+    --nacos.console.port=*|-Dnacos.console.port=*) console_port=${option#*=} ;;
+    --nacos.console.contextPath=*|-Dnacos.console.contextPath=*) console_context=${option#*=} ;;
+  esac
+done
+for value in "$port" "$console_port"; do
+  case "$value" in ''|*[!0-9]*) echo "Listening ports must be numeric" >&2; exit 2 ;; esac
+  [ "$value" -gt 0 ] && [ "$value" -le 65535 ] || { echo "Listening port is out of range" >&2; exit 2; }
+done
+for value in "$context" "$console_context"; do
+  case "$value" in *[!A-Za-z0-9_./-]*) echo "Use a plain context path or an explicit endpoint environment value" >&2; exit 2 ;; esac
+done
+context="/${context#/}"; context=${context%/}
+console_context="/${console_context#/}"; console_context=${console_context%/}
+if [ -n "${CF_INIT_CONFIG_FILE:-}" ] && [ "$DEPLOYMENT" = console ]; then
+  echo "Startup configuration import requires merged or server deployment" >&2; exit 2
+fi
+umask 077
+printf 'http://127.0.0.1:%s%s\n' "$port" "$context" > /tmp/cf-server-api-url
+if [ "$DEPLOYMENT" = console ]; then
+  printf 'http://127.0.0.1:%s%s/v3/console/health/readiness\n' "$console_port" "$console_context" > /tmp/cf-server-readiness-url
+else
+  printf 'http://127.0.0.1:%s%s/v3/admin/core/state/readiness\n' "$port" "$context" > /tmp/cf-server-readiness-url
+fi
+rm -f /tmp/cf-server-import-ready
 # JAVA_OPTS intentionally accepts whitespace-separated JVM options, never eval.
-exec java ${JAVA_OPTS} \
+set -- java ${JAVA_OPTS} \
   --add-opens=java.base/java.lang=ALL-UNNAMED \
   --add-opens=java.base/java.lang.reflect=ALL-UNNAMED \
   --add-opens=java.base/java.util=ALL-UNNAMED \
@@ -111,4 +162,11 @@ exec java ${JAVA_OPTS} \
   "-Dnacos.standalone=${standalone}" "-Dnacos.deployment.type=${DEPLOYMENT}" \
   -jar "${NACOS_HOME}/target/nacos-server.jar" \
   "--spring.config.additional-location=file:${NACOS_HOME}/conf/" \
-  "--logging.config=${NACOS_HOME}/conf/nacos-logback.xml" "$@"
+  "--logging.config=${NACOS_HOME}/conf/nacos-logback.xml" "$@" \
+  "--nacos.server.main.port=$port" "--nacos.server.contextPath=$context" \
+  "--nacos.console.port=$console_port" "--nacos.console.contextPath=$console_context"
+
+if [ -n "${CF_INIT_CONFIG_FILE:-}" ]; then
+  exec "${NACOS_HOME}/bin/startup-import.sh" "$@"
+fi
+exec "$@"

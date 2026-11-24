@@ -111,3 +111,81 @@ docker buildx build --platform linux/amd64,linux/arm64 \
 `CF_SCHEMA_TEST_JDBC_DRIVER`、`DB_TYPE/DB_URL/DB_USER/DB_PASSWORD/NACOS_HOME` 后运行同一脚本；
 该测试会主动制造不兼容结构，只能用于明确可丢弃的测试 Schema，禁止连接业务库。
 `python3 distribution/docker/verify-entrypoint.py --image <候选镜像>` 验证数据源覆盖冲突在连接前被拒绝。
+
+## 配置导入命令（镜像内置）
+
+文件先只读挂载或通过 `docker cp` 放进容器。CLI 通过有权限的用户调用 Admin API，不直连数据库：
+
+```sh
+docker exec -e CF_USERNAME=operator -e CF_PASSWORD_FILE=/run/secrets/import-password \
+  cf-server cf-server config import /imports/application.yaml \
+  --namespace public --group DEFAULT_GROUP
+
+docker exec -e CF_USERNAME=operator -e CF_PASSWORD_FILE=/run/secrets/import-password \
+  cf-server cf-server config import /imports/configs.zip --namespace dcup --overwrite
+```
+
+单文件必须是 UTF-8，默认文件名为 Data ID，按扩展名识别类型；可用 `--data-id`、`--type` 修改。
+ZIP 必须是平台导出的配置包，包含根 `.metadata.yml`（或兼容 `.meta.yml`）和 `Group/DataID` 内容；
+组、名称、类型来自包内元数据，不能再通过单文件选项覆盖。不支持任意目录压缩包。
+目标 Namespace ID 必须已存在，默认 public。同名配置默认 SKIP；`--overwrite` 才覆盖。
+单文件也封装成同一种 ZIP，由服务端应用冲突策略，不通过先查询再发布判断是否存在。
+
+`--server` 或 `CF_SERVER_URL` 指定完整服务地址，默认 `http://127.0.0.1:8848/nacos`。
+支持 `CF_USERNAME` + `CF_PASSWORD`/`CF_PASSWORD_FILE`，或 `CF_TOKEN`/`CF_TOKEN_FILE`。
+密码文件按原始字节读取，末尾换行也是密码的一部分；文件必须对容器 UID10001 可读。
+密码、令牌不接受命令行选项，不写入普通日志；成功输出只含导入/跳过数量的 JSON。
+网络超时不自动重试导入写请求；HTTP 成功但业务失败、未识别条目或部分导入均返回非零退出码。
+已有成功条目可能已经写入，导入不是整包回滚事务。
+
+## 启动自动导入
+
+通过 `CF_INIT_CONFIG_FILE` 启用；未设置时保持正常启动，不做配置导入。示例私有 env 文件：
+
+```text
+CF_INIT_CONFIG_FILE=/imports/configs.zip
+CF_INIT_NAMESPACE=public
+CF_INIT_USERNAME=nacos
+CF_INIT_ADMIN_PASSWORD_FILE=/run/secrets/initial-admin-password
+```
+
+启动时只读挂载配置包和秘密文件：
+
+```sh
+docker run -d --name cf-server --restart unless-stopped \
+  --env-file /secure/cf-server.env \
+  -v ./configs.zip:/imports/configs.zip:ro \
+  -v ./initial-admin-password:/run/secrets/initial-admin-password:ro \
+  -v cf-server-data:/opt/nacos/data -v cf-server-logs:/opt/nacos/logs \
+  -p 8080:8080 -p 8848:8848 -p 9848:9848 \
+  harbor.dap.local/middleware/cf-server:3.3.0
+```
+
+上述 env 仍需包含前文的 `NACOS_AUTH_*`，使用外部数据库时还需 `DB_URL/DB_USER/DB_PASSWORD`。
+
+| 参数 | 行为 |
+| --- | --- |
+| `CF_INIT_CONFIG_FILE` | 容器内可读的单文件或平台导出 ZIP |
+| `CF_INIT_NAMESPACE` | 已存在的 Namespace ID，默认 public |
+| `CF_INIT_GROUP` | 仅单文件，默认 DEFAULT_GROUP；ZIP 使用包内组 |
+| `CF_INIT_DATA_ID` / `CF_INIT_TYPE` | 仅单文件，默认文件名/扩展名 |
+| `CF_INIT_OVERWRITE` | 默认 false；true 显式覆盖同名配置 |
+| `CF_INIT_USERNAME` | 默认使用 CF_USERNAME，否则 nacos |
+| `CF_INIT_PASSWORD` / `CF_INIT_PASSWORD_FILE` | 已存在的导入账号密码，也可使用 CLI 的 CF_PASSWORD(_FILE) |
+| `CF_INIT_TOKEN` / `CF_INIT_TOKEN_FILE` | 已有效且有权限的导入令牌 |
+| `CF_INIT_ADMIN_PASSWORD` / `CF_INIT_ADMIN_PASSWORD_FILE` | 显式选择首次管理员初始化；空白值拒绝，已有管理员不重置 |
+| `CF_INIT_TIMEOUT` | 等待本机服务就绪的秒数，默认120 |
+
+新建管理员用户名为 nacos；若未另外提供导入凭据，使用同一显式初始化密码登录。
+已有管理员时初始化接口返回409，不重置任何密码；此时提供的导入凭据必须仍有效。
+只支持默认内置认证的管理员初始化，其他认证类型应使用预置有效账号/令牌。
+
+流程：数据库表初始化 → 启动 Java → 等待就绪 → 认证导入 → 记录成功摘要。
+摘要记录于 `/opt/nacos/data/init-import`，涵盖文件内容、名称、命名空间、单文件组/ID/类型、
+覆盖策略、服务地址及数据库目标；只有导入成功后才写入。同一输入和目标重启时跳过，
+文件或目标改变则重新处理。数据卷应持久化；这不是持续配置同步，手动修改后的配置不会在每次重启被还原。
+导入失败或部分成功不写完成记录，并终止 Java、以非零状态退出。
+容器健康检查在导入完成前保持未就绪。PID1 转发终止信号给 Java，等待其退出。
+自动导入仅适用于 merged/server 模式；独立 console 模式仍提供正常健康检查，但不执行本地 Admin 导入。
+端口/路径从普通 application.properties、对应环境变量、JVM/启动参数依次解析，并用同一最终值启动服务；
+复杂占位符请改用显式端口/路径环境变量。

@@ -10,17 +10,21 @@
 # limitations under the License.
 ARG BASE_IMAGE=eclipse-temurin:17-jre-jammy
 FROM ${BASE_IMAGE}
+RUN sed -i 's|http://|https://|g' /etc/apt/sources.list \
+    && apt-get -o Acquire::Retries=3 update && apt-get install -y --no-install-recommends curl jq zip unzip \
+    && rm -rf /var/lib/apt/lists/*
 ARG VARIANT=unified
 ARG SOURCE_REVISION=unknown
 LABEL org.opencontainers.image.title="CF Server" \
       org.opencontainers.image.revision="${SOURCE_REVISION}" \
       org.opencontainers.image.licenses="Apache-2.0" \
       cn.dap.nacos.variant="${VARIANT}"
-ENV NACOS_HOME=/opt/nacos MODE=standalone DEPLOYMENT=merged \
+ENV NACOS_HOME=/opt/nacos MODE=standalone DEPLOYMENT=merged PATH="/opt/nacos/bin:${PATH}" \
     JAVA_OPTS="-Xms256m -Xmx512m -XX:MaxDirectMemorySize=128m"
 WORKDIR /opt/nacos
 COPY --chown=10001:10001 release/ /opt/nacos/
 COPY --chown=10001:10001 --chmod=755 entrypoint.sh /opt/nacos/bin/container-entrypoint.sh
 USER 10001:10001
 EXPOSE 8848 9848 9849 7848 8080
+HEALTHCHECK --interval=10s --timeout=5s --start-period=240s --retries=3 CMD ["/opt/nacos/bin/healthcheck.sh"]
 ENTRYPOINT ["/opt/nacos/bin/container-entrypoint.sh"]

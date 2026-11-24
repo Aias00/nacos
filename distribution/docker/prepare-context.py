@@ -33,7 +33,7 @@ def prepare(server_jar, release_dir, output, variant, dm_plugin=None, dm_driver=
         raise ValueError('Unified image requires the built dm plugin and JDBC driver')
     template = Path(__file__).resolve().parent
     home = output / 'release'
-    for folder in ['conf', 'plugins', 'target', 'bin', 'data', 'logs']:
+    for folder in ['conf', 'plugins', 'target', 'bin', 'data', 'logs', 'work']:
         (home / folder).mkdir(parents=True)
     shutil.copy2(server_jar, home / 'target/nacos-server.jar')
     shutil.copytree(release_dir / 'conf', home / 'conf', dirs_exist_ok=True)
@@ -76,6 +76,9 @@ def prepare(server_jar, release_dir, output, variant, dm_plugin=None, dm_driver=
                        [str(source) for source in sources], check=True)
         subprocess.run(['jar', '--create', '--file', str((home / 'bin/schema-init.jar').resolve()),
                         '-C', str(classes), '.'], check=True)
+    for name in ['cf-server', 'startup-import.sh', 'healthcheck.sh']:
+        shutil.copy2(template / name, home / 'bin' / name)
+        (home / 'bin' / name).chmod(0o755)
     for name in ['Dockerfile', 'entrypoint.sh']:
         shutil.copy2(template / name, output / name)
     files = {str(p.relative_to(output)): hashlib.sha256(p.read_bytes()).hexdigest()

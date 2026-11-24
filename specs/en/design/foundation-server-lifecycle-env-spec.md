@@ -398,3 +398,19 @@ build does not require the operator to trace the Server first.
 - [Observability Hooks Spec](foundation-observability-hooks-spec.md)
 - [Plugin Spec](../plugin/plugin-spec.md)
 - [Environment Plugin Spec](../plugin/environment-plugin-spec.md)
+
+## Fork container configuration import
+
+The container may opt in to a one-shot configuration import with CF_INIT_CONFIG_FILE.
+It snapshots the input, starts the server, waits for local readiness and calls the
+existing authenticated Config Admin import API. A single UTF-8 file is converted to
+the same metadata archive contract; default conflict policy is SKIP, OVERWRITE is explicit.
+Native ZIPs preserve their metadata. Import does not directly access persistence.
+Optional first-administrator bootstrap requires an explicit nonblank password and
+uses only the create-once auth endpoint; existing administrator credentials are not reset.
+Only a fully successful import records a content-and-target fingerprint in the data
+volume. Repeated starts may skip an already completed fingerprint; changed inputs or
+targets are processed again. Partial/network/auth failures do not record completion,
+stop the server and fail startup; previously committed items are not rolled back.
+Container health is gated until import completion. PID1 forwards termination and
+reaps Java. Console-only deployments cannot perform local startup Admin imports.

@@ -1,0 +1,212 @@
+#!/bin/sh
+# Copyright 1999-2026 Alibaba Group Holding Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software is distributed
+# on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND.
+# See the License for the specific language governing permissions and limitations.
+set -eu
+umask 077
+
+usage() {
+  cat <<'HELP'
+Usage: cf-server config import FILE [OPTIONS]
+Import a UTF-8 configuration file or a Nacos metadata ZIP through the Admin API.
+
+  --namespace ID   Namespace ID (default: public; it must already exist)
+  --group NAME     Single-file Group (default: DEFAULT_GROUP)
+  --data-id ID     Single-file Data ID (default: file name)
+  --type TYPE      Single-file type (default: infer extension, otherwise text)
+  --overwrite     Replace existing configurations (default: skip existing)
+  --server URL    Server base URL including context path
+                  (default: http://127.0.0.1:8848/nacos)
+  --username NAME  Login user (or CF_USERNAME)
+  --help          Show this help
+
+Credentials: CF_PASSWORD or CF_PASSWORD_FILE; alternatively CF_TOKEN or CF_TOKEN_FILE.
+Passwords and tokens are never accepted as command-line options or persisted.
+CF_SERVER_URL, CF_CONNECT_TIMEOUT (5), CF_REQUEST_TIMEOUT (60) are optional.
+CF_AUTH_WAIT_SECONDS (0..120, default 0) can wait for fresh account caches;
+CF_AUTH_REQUIRE_ADMIN=true additionally waits for an administrator login identity.
+ZIPs retain their packaged groups/IDs/types; single-file overrides are rejected for ZIPs.
+Exit codes: 0 success, 2 usage/file, 3 authentication, 4 import rejected,
+            5 partial/inconsistent result, 6 network/timeout (write is not retried).
+HELP
+}
+fail() { code=$1; shift; printf '%s\n' "$*" >&2; exit "$code"; }
+[ "$#" -gt 0 ] || { usage >&2; exit 2; }
+case "$1" in --help|-h|help) usage; exit 0 ;; esac
+[ "$#" -ge 2 ] && [ "$1" = config ] && [ "$2" = import ] || fail 2 'Only config import is supported; use --help'
+shift 2
+file=''
+namespace=public
+group=DEFAULT_GROUP
+data_id=''
+config_type=''
+group_set=false
+data_id_set=false
+type_set=false
+policy=SKIP
+server=${CF_SERVER_URL:-http://127.0.0.1:8848/nacos}
+username=${CF_USERNAME:-}
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --help|-h) usage; exit 0 ;;
+    --overwrite) policy=OVERWRITE; shift ;;
+    --namespace|--group|--data-id|--type|--server|--username)
+      option=$1
+      [ "$#" -ge 2 ] || fail 2 'Missing option value'
+      [ -n "$2" ] || fail 2 'Empty option value'
+      case "$option" in
+        --namespace) namespace=$2 ;;
+        --group) group=$2; group_set=true ;;
+        --data-id) data_id=$2; data_id_set=true ;;
+        --type) config_type=$2; type_set=true ;;
+        --server) server=$2 ;;
+        --username) username=$2 ;;
+      esac
+      shift 2 ;;
+    --)
+      shift
+      [ "$#" -eq 1 ] && [ -z "$file" ] || fail 2 'Expected exactly one import file'
+      file=$1; shift ;;
+    -*) fail 2 'Unknown option; use --help' ;;
+    *) [ -z "$file" ] || fail 2 'Expected exactly one import file'; file=$1; shift ;;
+  esac
+done
+[ -n "$file" ] && [ -f "$file" ] && [ -r "$file" ] || fail 2 'Import file is missing or unreadable'
+for tool in curl jq zip unzip mktemp iconv; do command -v "$tool" >/dev/null 2>&1 || fail 2 'Required CLI tools are unavailable'; done
+has_control() { jq -ne --arg value "$1" '$value | explode | any(. < 32 or . == 127)' >/dev/null; }
+case "$server" in http://?*|https://?*) ;; *) fail 2 'Server must be an HTTP(S) base URL' ;; esac
+# Do not allow credentials, queries or fragments in a base URL; never follow redirects.
+case "$server" in *'?'*|*'#'*|*' '*|*'\'*|*'
+'*|*'
+'*) fail 2 'Invalid server base URL' ;; esac
+has_control "$server" && fail 2 'Invalid server base URL'
+authority=${server#*://}; authority=${authority%%/*}
+case "$authority" in ''|*@*) fail 2 'Server base URL must not contain credentials' ;; esac
+server=${server%/}
+connect_timeout=${CF_CONNECT_TIMEOUT:-5}
+request_timeout=${CF_REQUEST_TIMEOUT:-60}
+for timeout in "$connect_timeout" "$request_timeout"; do
+  case "$timeout" in ''|*[!0-9]*) fail 2 'Timeouts must be positive seconds' ;; esac
+  [ "$timeout" -gt 0 ] || fail 2 'Timeouts must be positive seconds'
+done
+auth_wait=${CF_AUTH_WAIT_SECONDS:-0}
+case "$auth_wait" in ''|*[!0-9]*) fail 2 'Authentication wait must be 0 through 120 seconds' ;; esac
+[ "$auth_wait" -le 120 ] || fail 2 'Authentication wait must be 0 through 120 seconds'
+auth_wait=$(printf '%s' "$auth_wait" | sed 's/^0*//')
+auth_wait=${auth_wait:-0}
+require_admin=${CF_AUTH_REQUIRE_ADMIN:-false}
+case "$require_admin" in true|false) ;; *) fail 2 'CF_AUTH_REQUIRE_ADMIN must be true or false' ;; esac
+case "$file" in /*) ;; *) file=$(pwd)/$file ;; esac
+temporary=$(mktemp -d "${TMPDIR:-/tmp}/cf-import.XXXXXXXX") || fail 2 'Cannot create private work directory'
+cleanup() { rm -rf "$temporary"; }
+trap cleanup 0
+trap 'exit 130' INT
+trap 'exit 143' TERM HUP
+package=$temporary/configs.zip
+
+# Names become ZIP paths, so constrain only path/control characters, not shell metacharacters.
+valid_component() {
+  [ -n "$1" ] || return 1
+  case "$1" in .|..|*/*|*'\'*) return 1 ;; esac
+  if has_control "$1"; then return 1; fi
+  return 0
+}
+kind=$(printf '%s' "${file##*.}" | tr '[:upper:]' '[:lower:]')
+if [ "$kind" = zip ]; then
+  [ "$group_set" = false ] && [ "$data_id_set" = false ] && [ "$type_set" = false ] || fail 2 'ZIP metadata determines group, Data ID and type; overrides are not accepted'
+  cp "$file" "$package" || fail 2 'Cannot read import ZIP'
+else
+  iconv -f UTF-8 -t UTF-8 < "$file" > /dev/null 2> "$temporary/encoding-error" || fail 2 'Single-file configurations must be valid UTF-8'
+  [ -n "$data_id" ] || data_id=${file##*/}
+  valid_component "$group" && valid_component "$data_id" || fail 2 'Group and Data ID must be non-empty single path components without control characters'
+  if [ -z "$config_type" ]; then
+    extension=$(printf '%s' "${data_id##*.}" | tr '[:upper:]' '[:lower:]')
+    case "$extension" in yml|yaml) config_type=yaml ;; properties|json|xml|html|toml|text) config_type=$extension ;; *) config_type=text ;; esac
+  fi
+  case "$config_type" in yaml|properties|json|xml|html|toml|text) ;; *) fail 2 'Unsupported configuration type' ;; esac
+  mkdir -- "$temporary/$group" || fail 2 'Cannot prepare import package'
+  cp "$file" "$temporary/$group/$data_id" || fail 2 'Cannot read configuration file'
+  # JSON is a YAML subset; jq safely quotes identifiers and preserves Unicode.
+  jq -n --arg dataId "$data_id" --arg group "$group" --arg type "$config_type" \
+    '{metadata:[{dataId:$dataId,group:$group,type:$type,appName:"",desc:""}]}' > "$temporary/.metadata.yml"
+  (cd "$temporary" && zip -q "$package" -- .metadata.yml "$group/$data_id" > "$temporary/zip-build-log" 2>&1) || fail 2 'Cannot prepare import ZIP'
+fi
+# Validate without extracting archive paths onto the filesystem.
+unzip -tqq "$package" </dev/null > "$temporary/zip-check" 2>&1 || fail 2 'Import ZIP is malformed, encrypted or unreadable'
+unzip -Z1 "$package" > "$temporary/entries" 2>/dev/null || fail 2 'Cannot inspect import ZIP'
+metadata_count=$(LC_ALL=C awk '$0 == ".metadata.yml" || $0 == ".meta.yml" { n++ } END { print n+0 }' "$temporary/entries")
+[ "$metadata_count" -eq 1 ] || fail 2 'Import ZIP must contain exactly one root .metadata.yml or .meta.yml file'
+LC_ALL=C awk '
+  $0 == ".metadata.yml" || $0 == ".meta.yml" || /\/$/ { next }
+  { n=split($0,p,"/"); if(n != 2 || p[1] == "" || p[1] == "." || p[1] == ".." || p[2] == "" || p[2] == "." || p[2] == ".." || index($0,"\\") || $0 ~ /[[:cntrl:]]/) exit 1 }
+' "$temporary/entries" || fail 2 'Import ZIP contains unsupported configuration paths'
+expected=$(LC_ALL=C awk '$0 != ".metadata.yml" && $0 != ".meta.yml" && $0 !~ /\/$/ { n++ } END { print n+0 }' "$temporary/entries")
+[ "$expected" -gt 0 ] || fail 2 'Import ZIP contains no configuration files'
+
+quoted() { printf '%s' "$1" | jq -Rs .; }
+printf 'silent\nshow-error\nconnect-timeout = %s\nmax-time = %s\nproto = "=http,https"\n' "$connect_timeout" "$request_timeout" > "$temporary/curl-base"
+http() {
+  config=$1; destination=$2; shift 2
+  if ! status=$(curl --disable --config "$temporary/curl-base" --config "$config" --output "$destination" --write-out '%{http_code}' "$@" 2> "$temporary/curl-error"); then
+    fail 6 'Network request failed or timed out; an import may have applied and was not retried'
+  fi
+  case "$status" in 2[0-9][0-9]) return 0 ;; *) return 1 ;; esac
+}
+if [ -n "${CF_TOKEN_FILE:-}" ]; then
+  [ -r "$CF_TOKEN_FILE" ] && [ -f "$CF_TOKEN_FILE" ] || fail 2 'Token file is unreadable'
+  token=$(cat "$CF_TOKEN_FILE")
+else
+  token=${CF_TOKEN:-}
+fi
+if [ -z "$token" ]; then
+  [ -n "$username" ] || fail 3 'Set CF_USERNAME and CF_PASSWORD/CF_PASSWORD_FILE, or provide a token'
+  printf '%s' "$username" > "$temporary/username"
+  if [ -n "${CF_PASSWORD_FILE:-}" ]; then
+    [ -f "$CF_PASSWORD_FILE" ] && [ -r "$CF_PASSWORD_FILE" ] || fail 2 'Password file is unreadable'
+    cp "$CF_PASSWORD_FILE" "$temporary/password"
+  else
+    [ -n "${CF_PASSWORD:-}" ] || fail 3 'Set CF_PASSWORD or CF_PASSWORD_FILE'
+    printf '%s' "$CF_PASSWORD" > "$temporary/password"
+  fi
+  { printf 'url = '; quoted "$server/v3/auth/user/login"; printf 'request = "POST"\n'; } > "$temporary/login-config"
+  deadline=$(( $(date +%s) + auth_wait ))
+  while :; do
+    token=''
+    if http "$temporary/login-config" "$temporary/login-response" \
+      --data-urlencode "username@$temporary/username" --data-urlencode "password@$temporary/password"; then
+      if jq -e 'type == "object" and ((has("code") | not) or .code == 0)' "$temporary/login-response" >/dev/null 2>&1; then
+        token=$(jq -er --arg require "$require_admin" '
+          (if has("code") then .data else . end) |
+          select($require != "true" or .globalAdmin == true) |
+          .accessToken | select(type == "string" and length > 0)
+        ' "$temporary/login-response" 2>/dev/null) || token=''
+      fi
+    fi
+    [ -z "$token" ] || break
+    [ "$(date +%s)" -lt "$deadline" ] || fail 3 'Authentication failed or required login identity is unavailable'
+    sleep 1
+  done
+fi
+# Token syntax excludes whitespace/control/header-injection bytes and config quoting hazards.
+case "$token" in *[!A-Za-z0-9._~+/=-]*) fail 3 'Authentication token is invalid' ;; esac
+{
+  printf 'url = '; quoted "$server/v3/admin/cs/config/import"
+  printf 'request = "POST"\nheader = '; quoted "Authorization: Bearer $token"
+} > "$temporary/import-config"
+http "$temporary/import-config" "$temporary/import-response" --form-string "namespaceId=$namespace" \
+  --form-string "policy=$policy" --form "file=@$package;type=application/zip;filename=configs.zip" || fail 4 'Configuration import was rejected by the server'
+jq -e 'type == "object" and .code == 0 and (.data | type == "object")' "$temporary/import-response" >/dev/null 2>&1 || fail 4 'Configuration import failed or returned an invalid response'
+jq -e --argjson expected "$expected" '
+  .data | (.succCount | type == "number" and . >= 0 and floor == .) and
+  (.skipCount | type == "number" and . >= 0 and floor == .) and
+  ((.failCount // .failedCount // 0) == 0) and ((.unrecognizedCount // 0) == 0) and
+  ((.failData // []) | type == "array" and length == 0) and
+  ((.unrecognizedData // []) | type == "array" and length == 0) and
+  (.succCount + .skipCount == $expected)
+' "$temporary/import-response" >/dev/null 2>&1 || fail 5 'Configuration import was partial or inconsistent; successful items may already have applied'
+jq -c --arg policy "$policy" --argjson total "$expected" \
+  '{success:true,imported:.data.succCount,skipped:.data.skipCount,total:$total,policy:$policy}' "$temporary/import-response"
