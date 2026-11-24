@@ -375,3 +375,7 @@ compatibility checks. No destructive DDL, business seed data, administrator rese
 automatic incompatible-schema migration is permitted. SQL/permission/compatibility
 errors abort startup. This is a container entrypoint capability; ordinary server JAR
 startup and embedded Derby lifecycle retain their existing contracts.
+
+The unified container infers the dialect from DB_URL (`jdbc:mysql:`, `jdbc:postgresql:`,
+`jdbc:dm:`). No URL selects embedded Derby. Unsupported URLs and explicit DB_TYPE
+conflicts fail before connecting; the inferred type is shared by initialization and server.

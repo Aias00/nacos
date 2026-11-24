@@ -295,3 +295,6 @@ Durable write or cluster change notification
 参数仅断言当前 JDBC Schema。并发启动通过数据库锁串行化，已有对象必须通过兼容校验。
 不得执行破坏性 DDL、插入业务初始数据、重置管理员或自动迁移不兼容表结构。SQL、权限和兼容
 错误须终止启动。此能力限容器入口；普通 JAR 启动及 Derby 内置初始化契约保持不变。
+
+统一容器根据 DB_URL 的 JDBC 前缀自动选择 MySQL、PostgreSQL 或达梦；未提供 URL 时使用 Derby。
+不支持的 URL 或显式 DB_TYPE 与 URL 冲突时，在连接数据库前拒绝启动；初始化器与服务共享识别结果。

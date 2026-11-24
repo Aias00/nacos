@@ -19,7 +19,17 @@ case "${DEPLOYMENT}" in
   merged|server|console) ;;
   *) echo "DEPLOYMENT must be merged, server or console" >&2; exit 2 ;;
 esac
-DB_TYPE="${DB_TYPE:-derby}"
+case "${DB_URL:-}" in
+  '') detected_type=derby ;;
+  jdbc:mysql:*) detected_type=mysql ;;
+  jdbc:postgresql:*) detected_type=postgresql ;;
+  jdbc:dm:*) detected_type=dm ;;
+  *) echo "Unsupported JDBC URL; expected mysql, postgresql or dm" >&2; exit 2 ;;
+esac
+if [ -n "${DB_TYPE:-}" ] && [ "${DB_TYPE}" != "${detected_type}" ]; then
+  echo "DB_TYPE and JDBC URL do not match" >&2; exit 2
+fi
+DB_TYPE="${detected_type}"
 DB_INIT_ENABLED="${DB_INIT_ENABLED:-true}"
 export DB_TYPE DB_INIT_ENABLED
 case "${DB_TYPE}" in

@@ -12,13 +12,13 @@ See the License for the specific language governing permissions and limitations.
 
 `harbor.dap.local/middleware/cf-server` 包含 Derby、MySQL、PostgreSQL、达梦的数据源插件和
 JDBC 驱动。相同标签通过 manifest list 支持 `linux/amd64` 和 `linux/arm64`。
-默认单机 Derby；外部数据库使用 `DB_TYPE` 选择，不再需要专用达梦镜像。
+默认单机 Derby；外部数据库根据 `DB_URL` 自动选择，不再需要专用达梦镜像。
 
 ## 启动配置
 
 | 环境变量 | 默认/含义 |
 | --- | --- |
-| `DB_TYPE` | `derby`；可选 `mysql`、`postgresql`、`dm` |
+| `DB_TYPE` | 无需配置；根据 JDBC URL 自动判断。可选显式值用于兼容，必须与 URL 一致 |
 | `DB_URL` | 外部数据库完整 JDBC URL，必须与类型一致 |
 | `DB_USER` / `DB_PASSWORD` | 独立应用数据库账号，外部数据库必填 |
 | `DB_INIT_ENABLED` | `true`：启动前自动初始化；`false`：由 DBA 预先初始化 |
@@ -41,7 +41,6 @@ docker run -d --name cf-server --restart unless-stopped \
 私有 env 文件内容示例（不要提交实际密码）：
 
 ```text
-DB_TYPE=mysql
 DB_URL=jdbc:mysql://mysql-host:3306/cf_server?characterEncoding=utf8&serverTimezone=UTC
 DB_USER=cf_server
 DB_PASSWORD=<数据库密码>
@@ -51,8 +50,8 @@ NACOS_AUTH_IDENTITY_VALUE=<集群内一致的随机身份值>
 NACOS_AUTH_TOKEN=<至少32字节随机内容的Base64编码>
 ```
 
-切换 PostgreSQL：`DB_TYPE=postgresql`、`DB_URL=jdbc:postgresql://host:5432/cf_server`；
-切换达梦：`DB_TYPE=dm`、`DB_URL=jdbc:dm://host:5236`，并使用对应专用用户。
+切换 PostgreSQL：`DB_URL=jdbc:postgresql://host:5432/cf_server`；
+切换达梦：`DB_URL=jdbc:dm://host:5236`，并使用对应专用用户。
 PostgreSQL 非默认 Schema 应通过 JDBC `currentSchema` 选择，`DB_SCHEMA` 只校验所选 Schema。
 数据库选择和连接参数统一来自 `DB_*`；禁止通过容器启动参数覆盖数据源或 Spring 配置文件来源，
 避免初始化器与服务连接不同数据库。旧达梦镜像的 `DM_URL/DM_USER/DM_PASSWORD` 需改为 `DB_*`。

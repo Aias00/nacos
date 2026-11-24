@@ -25,6 +25,8 @@ def verify(image):
             '-e', 'DB_URL=jdbc:mysql://unreachable.invalid/cf', '-e', 'DB_USER=test',
             '-e', 'DB_PASSWORD=do-not-log-this-sentinel']
     cases = [
+        (['-e', 'DB_TYPE=postgresql'], []),
+        (['-e', 'DB_URL=jdbc:unsupported://unreachable.invalid/cf'], []),
         (['-e', 'NACOS_PLUGIN_DATASOURCE_DB_URL_0=jdbc:mysql://other.invalid/other'], []),
         (['-e', 'SPRING_APPLICATION_JSON={"db":{"user":"other"}}'], []),
         (['-e', 'JAVA_OPTS=-Ddb.url.0=jdbc:mysql://other.invalid/other'], []),
