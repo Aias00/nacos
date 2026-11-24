@@ -54,8 +54,11 @@ python3 distribution/docker/prepare-context.py \
 docker buildx build --platform linux/amd64,linux/arm64 \
   --build-arg BASE_IMAGE=eclipse-temurin:17-jre-jammy \
   --build-arg SOURCE_REVISION=<commit> --build-arg VARIANT=standard \
-  -t harbor.dap.local/middleware/nacos-arco:<version> --push /tmp/nacos-standard-context
+  -t harbor.dap.local/middleware/cf-server:3.3.0 --push /tmp/nacos-standard-context
 ```
+
+普通版仓库名为 `middleware/cf-server`，达梦版为 `middleware/cf-server-dameng`。
+发布标签为 `3.3.0`（ARM64/AMD64 多架构），独立架构标签为 `3.3.0-arm64`、`3.3.0-amd64`。
 
 构建环境不能访问 Harbor 时，用 `docker save` 导出各架构标签，传到已登录 Harbor 的中转机，
 执行 `docker load`、`docker push`；分别提供 `-amd64` / `-arm64` 标签。多架构总标签需另外创建并
