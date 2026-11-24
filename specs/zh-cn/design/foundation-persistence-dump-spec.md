@@ -287,3 +287,11 @@ Durable write or cluster change notification
 - [Config 监听与 Watch 规范](../config/config-listener-watch-spec.md)
 - [数据源方言插件规范](../plugin/datasource-dialect-plugin-spec.md)
 - [Config 加密插件规范](../plugin/config-encryption-plugin-spec.md)
+
+## 容器专用外部表结构初始化
+
+本分支统一镜像可在服务启动前补齐缺失表、索引和约束，容器默认 `DB_INIT_ENABLED=true`。
+数据库、账号和 Schema 必须提前存在。初始化器与服务共享显式 `DB_*` 选型和凭据；可选 Schema
+参数仅断言当前 JDBC Schema。并发启动通过数据库锁串行化，已有对象必须通过兼容校验。
+不得执行破坏性 DDL、插入业务初始数据、重置管理员或自动迁移不兼容表结构。SQL、权限和兼容
+错误须终止启动。此能力限容器入口；普通 JAR 启动及 Derby 内置初始化契约保持不变。

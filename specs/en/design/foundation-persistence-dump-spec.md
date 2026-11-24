@@ -363,3 +363,15 @@ Rules:
 - [Config Listener And Watch Spec](../config/config-listener-watch-spec.md)
 - [Datasource Dialect Plugin Spec](../plugin/datasource-dialect-plugin-spec.md)
 - [Config Encryption Plugin Spec](../plugin/config-encryption-plugin-spec.md)
+
+## Container-only external schema initialization
+
+This fork's unified container may initialize missing tables, indexes and constraints
+before server startup when `DB_INIT_ENABLED=true` (the container default). Database,
+user and schema must already exist. The initializer and server share explicit `DB_*`
+selection and credentials; an optional schema setting only asserts the current JDBC
+schema. A database lock serializes concurrent startup, and existing objects must pass
+compatibility checks. No destructive DDL, business seed data, administrator reset or
+automatic incompatible-schema migration is permitted. SQL/permission/compatibility
+errors abort startup. This is a container entrypoint capability; ordinary server JAR
+startup and embedded Derby lifecycle retain their existing contracts.

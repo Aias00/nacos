@@ -19,10 +19,77 @@ case "${DEPLOYMENT}" in
   merged|server|console) ;;
   *) echo "DEPLOYMENT must be merged, server or console" >&2; exit 2 ;;
 esac
-if [ -f "${NACOS_HOME}/conf/dameng.properties" ]; then
-  : "${DM_URL:?Set DM_URL to the Dameng JDBC URL}"
-  : "${DM_USER:?Set DM_USER to the dedicated Nacos database user}"
-  : "${DM_PASSWORD:?Set DM_PASSWORD to its password}"
+DB_TYPE="${DB_TYPE:-derby}"
+DB_INIT_ENABLED="${DB_INIT_ENABLED:-true}"
+export DB_TYPE DB_INIT_ENABLED
+case "${DB_TYPE}" in
+  derby) ;;
+  mysql|postgresql|dm)
+    : "${DB_URL:?Set DB_URL to the selected database JDBC URL}"
+    : "${DB_USER:?Set DB_USER to the dedicated database user}"
+    : "${DB_PASSWORD:?Set DB_PASSWORD to its password}"
+    case "${DB_TYPE}:${DB_URL}" in
+      mysql:jdbc:mysql:*|postgresql:jdbc:postgresql:*|dm:jdbc:dm:*) ;;
+      *) echo "DB_TYPE and JDBC URL do not match" >&2; exit 2 ;;
+    esac
+    ;;
+  *) echo "DB_TYPE must be derby, mysql, postgresql or dm" >&2; exit 2 ;;
+esac
+case "${DB_INIT_ENABLED}" in
+  true|false) ;;
+  *) echo "DB_INIT_ENABLED must be true or false" >&2; exit 2 ;;
+esac
+# Reject alternate Spring/JVM connection sources rather than initializing a different database.
+for name in $(env | sed 's/=.*//'); do
+  case "${name}" in
+    DB_TYPE|DB_URL|DB_USER|DB_PASSWORD|DB_SCHEMA|DB_INIT_ENABLED|DB_INIT_LOCK_TIMEOUT|DB_VALIDATION_QUERY) continue ;;
+  esac
+  key=$(printf '%s' "$name" | tr '[:upper:]' '[:lower:]' | tr -d '._-')
+  case "${key}" in
+    springapplicationjson|springconfig*|springdatasource*|springsqlinitplatform|nacosplugindatasource*|dbpoolconfig*|dbnum|dburl*|dbuser*|dbpassword*)
+      echo "Conflicting datasource environment; use DB_* variables only" >&2; exit 2 ;;
+  esac
+done
+for option in ${JAVA_OPTS:-} ${JAVA_TOOL_OPTIONS:-} ${JDK_JAVA_OPTIONS:-} ${_JAVA_OPTIONS:-}; do
+  case "${option}" in
+    -Dspring.config.*|-Dspring.application.json*|-Dspring.sql.init.platform*|-Dspring.datasource*|-Dnacos.plugin.datasource*|-Ddb.*|@*)
+      echo "Conflicting datasource JVM option; use DB_* variables only" >&2; exit 2 ;;
+  esac
+done
+if ! cmp -s "${NACOS_HOME}/conf/datasource.properties" "${NACOS_HOME}/bin/datasource.properties.template"; then
+  echo "Use the bundled datasource.properties with DB_* variables" >&2; exit 2
+fi
+for config in "${NACOS_HOME}"/conf/*.properties; do
+  [ "$config" = "${NACOS_HOME}/conf/datasource.properties" ] && continue
+  if ! awk '
+    /^[[:space:]]*([#!]|$)/ { next }
+    $0 == "spring.config.import=file:/opt/nacos/conf/datasource.properties" { next }
+    { key=$0; sub(/[=:].*/, "", key); gsub(/[[:space:]_.-]/, "", key); key=tolower(key)
+      if (key ~ /^(nacosplugindatasource|springdatasource|springsqlinitplatform|dburl|dbuser|dbpassword|dbnum|dbpoolconfig|springconfig|springapplicationjson)/) exit 1 }
+  ' "$config"; then
+    echo "Conflicting datasource file configuration; use DB_* variables only" >&2; exit 2
+  fi
+done
+for config in "${NACOS_HOME}"/conf/application*.yaml "${NACOS_HOME}"/conf/application*.yml; do
+  if [ -f "$config" ]; then
+    echo "Use bundled properties and DB_* variables instead of application YAML overrides" >&2; exit 2
+  fi
+done
+# Keep initialization and Nacos on the same datasource; do not override selection via CLI.
+for option in "$@"; do
+  case "${option}" in
+    --spring.config.*|--spring.application.json*|--spring.sql.init.platform*|--spring.datasource*|--nacos.plugin.datasource*|--db.*)
+      echo "Use DB_* environment variables for datasource configuration" >&2; exit 2 ;;
+  esac
+done
+if [ "${DB_TYPE}" = dm ]; then
+  DB_VALIDATION_QUERY='SELECT 1 FROM DUAL'
+else
+  DB_VALIDATION_QUERY='SELECT 1'
+fi
+export DB_VALIDATION_QUERY
+if [ "${DEPLOYMENT}" != console ] && [ "${DB_TYPE}" != derby ] && [ "${DB_INIT_ENABLED}" = true ]; then
+  java -cp "${NACOS_HOME}/bin/schema-init.jar:${NACOS_HOME}/plugins/*" cn.dap.cf.SchemaInitializer
 fi
 # JAVA_OPTS intentionally accepts whitespace-separated JVM options, never eval.
 exec java ${JAVA_OPTS} \

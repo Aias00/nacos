@@ -10,9 +10,9 @@
 # limitations under the License.
 ARG BASE_IMAGE=eclipse-temurin:17-jre-jammy
 FROM ${BASE_IMAGE}
-ARG VARIANT=standard
+ARG VARIANT=unified
 ARG SOURCE_REVISION=unknown
-LABEL org.opencontainers.image.title="Arco Nacos" \
+LABEL org.opencontainers.image.title="CF Server" \
       org.opencontainers.image.revision="${SOURCE_REVISION}" \
       org.opencontainers.image.licenses="Apache-2.0" \
       cn.dap.nacos.variant="${VARIANT}"
