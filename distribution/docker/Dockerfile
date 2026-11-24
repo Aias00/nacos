@@ -20,10 +20,7 @@ ENV NACOS_HOME=/opt/nacos MODE=standalone DEPLOYMENT=merged \
     JAVA_OPTS="-Xms256m -Xmx512m -XX:MaxDirectMemorySize=128m"
 WORKDIR /opt/nacos
 COPY --chown=10001:10001 release/ /opt/nacos/
-COPY --chown=10001:10001 entrypoint.sh /opt/nacos/bin/container-entrypoint.sh
-RUN chmod 755 /opt/nacos/bin/container-entrypoint.sh && \
-    mkdir -p /opt/nacos/data /opt/nacos/logs && \
-    chown -R 10001:10001 /opt/nacos
+COPY --chown=10001:10001 --chmod=755 entrypoint.sh /opt/nacos/bin/container-entrypoint.sh
 USER 10001:10001
 EXPOSE 8848 9848 9849 7848 8080
 ENTRYPOINT ["/opt/nacos/bin/container-entrypoint.sh"]
