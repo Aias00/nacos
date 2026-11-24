@@ -78,3 +78,19 @@ Nacos 从 `nacos.plugin.datasource-dialect.type` 选择启动数据库类型。
 内置方言实现不持有数据源连接或连接池配置。它们通过 `DatabaseDialect` 继承
 `PluginConfigSpec`，但不声明 definitions，因此以 `configurable=false` 暴露。Datasource
 模块配置由上层数据源方言插件规范定义。
+
+## 本分支可选的达梦 DM8 实现
+
+`nacos-datasource-plugin-dm` 是独立打包的可选数据源插件，使用 `dm` 类型选择，
+不替换普通发行版的数据源插件。插件注册 `DmDatabaseDialect` 和 `impl.dm` 下的九类表 Mapper。
+要求 DM8 原生模式（`COMPATIBLE_MODE=0`）、UTF-8、大小写敏感字符串比较；
+不支持 Oracle 兼容模式将空字符串视为 NULL 的语义。插件不内嵌驱动，达梦适配产物额外携带
+`com.dameng:DmJdbcDriver8:8.1.5.45`，驱动类为 `dm.jdbc.driver.DmDriver`。
+新建独立应用模式时使用 `distribution/conf/dameng-schema.sql`，插件内也提供
+`META-INF/dameng-schema.sql`；已有数据库迁移需单独评审，不能直接执行新建脚本。
+表语义与逻辑模型一致：命名空间时间为毫秒 BIGINT，配置/历史时间为 JDBC 时间戳，
+配置内容及历史扩展为 CLOB，保留空 owner，返回大写 `ID` 生成键，并仅将 `-6602` 识别为重复键。
+分页使用 OFFSET/FETCH，外层分页结果与容量游标扫描均显式排序，LIKE 声明单字符转义，
+VARCHAR 显式使用字符长度。真实 JDBC 回归覆盖带/不带标签的完整页、尾页、越界页，
+容量游标续扫及最大长度中文 Data ID/Group。可选外部 JDBC 测试通过私有属性文件读取
+专用测试模式的凭据，验证以上方言差异；不提交数据库密码或在测试中启动服务端。

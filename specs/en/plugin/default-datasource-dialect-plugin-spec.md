@@ -91,3 +91,24 @@ Built-in dialect implementations do not own datasource connection or pool config
 inherit `PluginConfigSpec` through `DatabaseDialect` but declare no definitions, so they are exposed
 as `configurable=false`; datasource module configuration is defined by the parent dialect plugin
 spec.
+
+## Optional Dameng DM8 implementation in this fork
+
+`nacos-datasource-plugin-dm` is an optional, separately packaged datasource plugin
+selected by type `dm`; it does not replace or alter the ordinary database plugins.
+It registers one `DmDatabaseDialect` and nine `impl.dm` table mapper providers.
+DM8 native mode (`COMPATIBLE_MODE=0`), UTF-8 and case-sensitive string comparison
+are required. Oracle-compatible empty-string-to-NULL behavior is not supported.
+The plugin bundles no driver; DM-specific artifacts include the pinned external
+`com.dameng:DmJdbcDriver8:8.1.5.45` driver and use `dm.jdbc.driver.DmDriver`.
+Fresh schemas use `distribution/conf/dameng-schema.sql` (also packaged under
+`META-INF/dameng-schema.sql`); existing databases require an independently reviewed
+migration. Table semantics match the logical schema, including namespace timestamp
+BIGINTs, config/history timestamps, CLOB content and extensions, empty owner values,
+uppercase generated `ID` columns and error `-6602` duplicate classification.
+DM SQL uses OFFSET/FETCH pagination, deterministic outer page/keyset ordering,
+a single-character explicit LIKE escape, and explicit character-length VARCHAR columns.
+Real JDBC regression covers tagged/untagged full/tail/out-of-range pages, capacity
+keyset continuation and maximum-length Chinese Data ID/Group values.
+Opt-in external JDBC tests cover these differences against a dedicated schema;
+credentials are supplied through a private file rather than committed fixtures.
