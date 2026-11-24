@@ -82,11 +82,11 @@ for option in "$@"; do
       echo "Use DB_* environment variables for datasource configuration" >&2; exit 2 ;;
   esac
 done
-if [ "${DB_TYPE}" = dm ]; then
-  DB_VALIDATION_QUERY='SELECT 1 FROM DUAL'
-else
-  DB_VALIDATION_QUERY='SELECT 1'
-fi
+case "${DB_TYPE}" in
+  dm) DB_VALIDATION_QUERY='SELECT 1 FROM DUAL' ;;
+  derby) DB_VALIDATION_QUERY='VALUES 1' ;;
+  *) DB_VALIDATION_QUERY='SELECT 1' ;;
+esac
 export DB_VALIDATION_QUERY
 if [ "${DEPLOYMENT}" != console ] && [ "${DB_TYPE}" != derby ] && [ "${DB_INIT_ENABLED}" = true ]; then
   java -cp "${NACOS_HOME}/bin/schema-init.jar:${NACOS_HOME}/plugins/*" cn.dap.cf.SchemaInitializer
@@ -96,6 +96,7 @@ exec java ${JAVA_OPTS} \
   --add-opens=java.base/java.lang=ALL-UNNAMED \
   --add-opens=java.base/java.lang.reflect=ALL-UNNAMED \
   --add-opens=java.base/java.util=ALL-UNNAMED \
+  "-Dderby.stream.error.file=${NACOS_HOME}/logs/derby.log" \
   "-Dnacos.home=${NACOS_HOME}" "-Dloader.path=${NACOS_HOME}/plugins" \
   "-Dnacos.standalone=${standalone}" "-Dnacos.deployment.type=${DEPLOYMENT}" \
   -jar "${NACOS_HOME}/target/nacos-server.jar" \
